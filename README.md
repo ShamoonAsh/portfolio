@@ -25,6 +25,21 @@ only lets it deliver to the email address that owns the Resend account. To
 receive at any other address, verify a domain in Resend and set `CONTACT_FROM`
 to an address on it.
 
+### Checking the config
+
+`GET /api/contact` returns a health check — booleans only, never values:
+
+```json
+{ "ok": true, "configured": true,
+  "env": { "RESEND_API_KEY": true, "CONTACT_TO": true, "CONTACT_FROM": false },
+  "keyLooksValid": true, "vercelEnv": "production" }
+```
+
+Open `https://<your-site>/api/contact` in a browser. If `configured` is `false`,
+the deployment cannot see `RESEND_API_KEY` — the variable is missing from that
+environment, or it was added after the deployment was built. **Adding a variable
+does not update existing deployments; you must redeploy.**
+
 ## Local development
 
 `npm i -g vercel` then `vercel dev` in this folder — that serves the static

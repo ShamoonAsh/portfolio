@@ -27,15 +27,41 @@ const escapeHtml = (value) =>
   })[ch]);
 
 module.exports = async (req, res) => {
+  // trim: a value pasted with a stray newline should not be treated as valid
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
+
+  // GET /api/contact — config health check. Booleans only, never values, so
+  // it's safe to leave public. Use it to confirm Vercel is actually passing
+  // the env vars to this deployment.
+  if (req.method === "GET") {
+    return res.status(200).json({
+      ok: true,
+      configured: Boolean(apiKey),
+      env: {
+        RESEND_API_KEY: Boolean(apiKey),
+        CONTACT_TO: Boolean((process.env.CONTACT_TO || "").trim()),
+        CONTACT_FROM: Boolean((process.env.CONTACT_FROM || "").trim()),
+      },
+      keyLooksValid: apiKey.startsWith("re_"),
+      vercelEnv: process.env.VERCEL_ENV || null,
+    });
+  }
+
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed." });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error("RESEND_API_KEY is not set");
-    return res.status(500).json({ error: "The contact form isn't configured yet." });
+    console.error(
+      "RESEND_API_KEY missing at runtime. VERCEL_ENV=" + (process.env.VERCEL_ENV || "unknown") +
+      ". Add it in Vercel > Settings > Environment Variables, then REDEPLOY " +
+      "(env vars are applied at build time, so existing deployments won't pick it up)."
+    );
+    return res.status(500).json({
+      error: "The contact form isn't configured yet.",
+      code: "missing_api_key",
+    });
   }
 
   // Vercel parses JSON bodies for us, but be tolerant of a raw string
@@ -105,8 +131,15 @@ module.exports = async (req, res) => {
     });
 
     if (!resend.ok) {
-      console.error("Resend responded", resend.status, await resend.text());
-      return res.status(502).json({ error: "Couldn't send the message right now." });
+      const detail = await resend.text();
+      console.error("Resend responded", resend.status, detail);
+      // 401 = bad/revoked key, 403 = sandbox sender can only mail the account
+      // owner. Surfaced as a code (not the raw detail) to keep the visitor
+      // message generic while making the Vercel logs unambiguous.
+      return res.status(502).json({
+        error: "Couldn't send the message right now.",
+        code: "resend_" + resend.status,
+      });
     }
 
     return res.status(200).json({ ok: true });
