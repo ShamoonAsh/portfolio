@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# local env / secrets — never commit the Resend key
+.env
+.env.local
+.env*.local
+
+# vercel
+.vercel
+
+# editor / OS noise
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+*.log
