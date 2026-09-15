@@ -139,14 +139,17 @@ main, .footer { position: relative; z-index: 1; }
 
 .brand { display: inline-flex; align-items: center; gap: 10px; }
 .brand-mark {
-  width: 32px; height: 32px;
-  border-radius: 10px;
-  background: var(--grad);
-  color: #14100e;
-  display: grid; place-items: center;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition: transform 0.45s var(--ease), box-shadow 0.3s;
+}
+.brand:hover .brand-mark {
+  transform: rotate(-8deg) scale(1.06);
+  box-shadow: 0 0 0 1px rgba(127, 165, 221, 0.6);
 }
 .brand-text { font-family: var(--font-display); font-weight: 600; font-size: 17.5px; letter-spacing: -0.02em; }
 
