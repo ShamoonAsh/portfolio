@@ -48,5 +48,6 @@ except the form, which needs the function running.
 
 ## The CV download
 
-The **Download CV** button links to `/SyedShamoonAshrafResume.pdf`. Drop that
-PDF in the project root (exact filename) before deploying, or the button 404s.
+The **Download Resume** button links to `/SYED_SHAMOON_ASHRAF_RESUME.pdf`, which
+lives in the project root. Renaming the file without updating the `href` in
+`index.html` will make the button 404.
