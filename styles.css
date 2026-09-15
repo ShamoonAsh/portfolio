@@ -775,6 +775,19 @@ main, .footer { position: relative; z-index: 1; }
   .project-top { flex-wrap: wrap; }
 }
 
+/* Tablets. The 860px rules collapse everything to one column, which is right
+   for phones but leaves a 768px iPad showing single stretched cards with a
+   lot of dead space. From 700px up there is room for two abreast. */
+@media (min-width: 700px) and (max-width: 860px) {
+  .projects { grid-template-columns: repeat(2, 1fr); }
+  .project { grid-column: auto; }
+  .project-featured { grid-column: 1 / -1; }
+  .certs { grid-template-columns: repeat(2, 1fr); }
+  .contact-form { grid-template-columns: 1fr 1fr; }
+  .tl-item { grid-template-columns: 170px 1fr; gap: 24px; }
+  .tl-when { padding-top: 4px; }
+}
+
 @media (max-width: 520px) {
   .section { padding-top: 84px; }
   .hero-services { grid-template-columns: 1fr 1fr; }
