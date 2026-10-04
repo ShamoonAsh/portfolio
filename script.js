@@ -294,7 +294,9 @@ const TECH_ICONS = {
   Streamlit: "streamlit",
   "Gmail API": "gmail",
   "Gemini API": "gemini",
+  "Google Gemini API": "gemini",
   "WhatsApp Cloud API": "whatsapp",
+  "Meta WhatsApp Cloud API": "whatsapp",
   Ngrok: "ngrok",
 };
 const MONO_ICONS = { stripe: 1, whatsapp: 1, ngrok: 1, gmail: 1, gemini: 1, google: 1 };
