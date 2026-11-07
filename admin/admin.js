@@ -364,7 +364,8 @@
     $("app").hidden = false;
     $("defaultTheme").value = state.draft.defaultTheme;
     syncThemeSeg();
-    renderSwatches();
+    syncBrandInputs();
+    syncFavicon();
     updateDirty();
 
     frame.addEventListener("load", setupFrame);
@@ -443,8 +444,31 @@
   // ------------------------------------------------------------------
   // preview <-> draft
   // ------------------------------------------------------------------
-  // the editor tab's icon mirrors the preview's palette-coloured favicon
+  // The editor takes the site's look: its light/dark mode and accent colours.
+  // mode: "dark" | "light" | null (null = follow the device); pick(token) -> hex | null
+  function applyAdminChrome(mode, pick) {
+    const rootEl = document.documentElement;
+    if (mode === "dark" || mode === "light") rootEl.setAttribute("data-theme", mode);
+    else rootEl.removeAttribute("data-theme");
+    const set = (name, value) => (value ? rootEl.style.setProperty(name, value) : rootEl.style.removeProperty(name));
+    const ok = (v) => (v && /^#[0-9a-f]{6}$/i.test(v) ? v : null);
+    const accent = ok(pick("--accent"));
+    set("--accent", accent);
+    set("--accent-ink", accent ? ok(pick("--on-accent")) : null);
+    set("--accent-soft", accent ? "color-mix(in srgb, " + accent + " 13%, transparent)" : null);
+    const g1 = ok(pick("--grad-1"));
+    const g3 = ok(pick("--grad-3"));
+    const g4 = ok(pick("--grad-4"));
+    set("--mark-grad", g1 && g3 && g4 ? "linear-gradient(155deg, " + g1 + ", " + g3 + " 62%, " + g4 + ")" : null);
+  }
+
+  // In the editor: follow the preview's mode and the draft palette (each
+  // accent is tuned for its own mode's background, so it reads well here too).
+  // The tab icon mirrors the preview's palette-coloured favicon.
   function syncFavicon() {
+    const mode = state.previewTheme;
+    const ready = Object.keys(state.defaults[mode] || {}).length > 0;
+    applyAdminChrome(mode, (t) => (ready ? colorValue(mode, t) : (state.draft.colors[mode] || {})[t] || null));
     if (!doc) return;
     const src = doc.querySelector("link[rel~='icon']");
     const mine = document.querySelector("link[rel~='icon']");
@@ -513,6 +537,7 @@
             state.previewTheme = cms.currentTheme();
             syncThemeSeg();
             renderColorList();
+            syncFavicon();
           }, 0);
           return;
         }
@@ -1355,6 +1380,17 @@
     updateDirty();
   }
 
+  // the picker shows the saved theme colour (the dark accent is the colour the
+  // palette was built from), not always the original blue
+  function syncBrandInputs() {
+    const acc = normalizeHex((state.draft.colors.dark || {})["--accent"]);
+    brandHex = acc;
+    $("brandColor").value = acc || "#5c86c4";
+    $("brandHex").value = acc || "#5c86c4";
+    $("brandHex").removeAttribute("aria-invalid");
+    renderSwatches();
+  }
+
   function renderSwatches() {
     const host = $("swatches");
     host.textContent = "";
@@ -1553,7 +1589,7 @@
     renderPreview();
     renderAllPanels();
     renderColorList();
-    renderSwatches();
+    syncBrandInputs();
     updateDirty();
   });
 
@@ -1567,7 +1603,28 @@
   // ------------------------------------------------------------------
   // start
   // ------------------------------------------------------------------
+  // Before login: dress the login screen in the site's saved look. Public,
+  // edge-cached data; on failure the screen keeps the default blue.
+  async function themeLoginScreen() {
+    try {
+      const res = await fetch("/api/content", { headers: { Accept: "application/json" } });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (state.editorOpen || !data || !data.colors) return;
+      const mode =
+        data.defaultTheme === "light" || data.defaultTheme === "dark"
+          ? data.defaultTheme
+          : window.matchMedia("(prefers-color-scheme: light)").matches
+          ? "light"
+          : "dark";
+      applyAdminChrome(data.defaultTheme === "system" ? null : mode, (t) => (data.colors[mode] || {})[t] || null);
+    } catch (e) {
+      /* keep the defaults */
+    }
+  }
+
   (async function boot() {
+    themeLoginScreen();
     try {
       const s = await api("/api/admin/auth");
       if (s.authenticated) {
