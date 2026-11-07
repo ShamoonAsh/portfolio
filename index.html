@@ -6,6 +6,7 @@
 <title>Syed Shamoon Ashraf, Computer Science Graduate</title>
 <meta name="description" content="Syed Shamoon Ashraf, Computer Science graduate from Karachi building .NET, Dynamics 365 F&amp;O and Python solutions." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%235c86c4'/%3E%3Ctext x='50' y='70' font-family='Arial' font-size='62' font-weight='bold' fill='%230a1120' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#07080b" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -20,6 +21,13 @@
   try {
     var t = localStorage.getItem("theme");
     if (t === "light" || t === "dark") { d.setAttribute("data-theme", t); d.setAttribute("data-theme-source", "user"); }
+    // last favicon/bar colour built from the saved palette, so the tab
+    // doesn't flash the default blue before the palette loads
+    var mode = d.getAttribute("data-theme") === "light" ? "light" : "dark";
+    var icon = localStorage.getItem("cms-favicon-" + mode);
+    var bar = localStorage.getItem("cms-bar-" + mode);
+    if (icon && icon.indexOf("data:image/svg+xml,") === 0) document.querySelector("link[rel~='icon']").href = icon;
+    if (bar && /^#[0-9a-f]{3,8}$/i.test(bar)) document.querySelector("meta[name='theme-color']").content = bar;
   } catch (e) {}
   if (/[?&]cms=edit\b/.test(location.search)) { d.classList.add("cms-edit"); return; }
   if (!window.fetch) return;

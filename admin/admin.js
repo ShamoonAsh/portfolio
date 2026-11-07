@@ -443,6 +443,14 @@
   // ------------------------------------------------------------------
   // preview <-> draft
   // ------------------------------------------------------------------
+  // the editor tab's icon mirrors the preview's palette-coloured favicon
+  function syncFavicon() {
+    if (!doc) return;
+    const src = doc.querySelector("link[rel~='icon']");
+    const mine = document.querySelector("link[rel~='icon']");
+    if (src && mine && mine.getAttribute("href") !== src.getAttribute("href")) mine.setAttribute("href", src.getAttribute("href"));
+  }
+
   const elFor = (key) => (doc ? doc.querySelector(sel("data-k", key)) : null);
   const itemEl = (id) => (doc && id ? doc.querySelector(sel("data-item", id)) : null);
 
@@ -461,8 +469,10 @@
       if (a && typeof href === "string" && a.getAttribute("href") !== href) a.setAttribute("href", href);
     });
     cms.applyColors(state.draft.colors);
+    syncFavicon();
     cms.setTheme(state.previewTheme);
     markSelectedItem();
+    syncFavicon();
   }
 
   function markSelectedItem() {
@@ -1109,6 +1119,7 @@
     state.previewTheme = b.dataset.theme;
     syncThemeSeg();
     if (cms) cms.setTheme(state.previewTheme);
+    syncFavicon();
     renderColorList();
   });
 
@@ -1126,6 +1137,7 @@
     if (!hex || hex === state.defaults[theme][token]) delete map[token];
     else map[token] = hex;
     if (cms) cms.applyColors(state.draft.colors);
+    syncFavicon();
     updateDirty();
   }
 
@@ -1219,6 +1231,7 @@
   $("restoreColors").addEventListener("click", () => {
     state.draft.colors[state.previewTheme] = {};
     if (cms) cms.applyColors(state.draft.colors);
+    syncFavicon();
     renderColorList();
     renderSwatches();
     updateDirty();
@@ -1322,6 +1335,7 @@
       state.draft.colors[theme] = map;
     });
     if (cms) cms.applyColors(state.draft.colors);
+    syncFavicon();
     $("brandColor").value = v;
     if (!(opts && opts.fromHex)) $("brandHex").value = v;
     renderColorList();
@@ -1333,6 +1347,7 @@
     brandHex = null;
     state.draft.colors = { dark: {}, light: {} };
     if (cms) cms.applyColors(state.draft.colors);
+    syncFavicon();
     $("brandColor").value = "#5c86c4";
     $("brandHex").value = "#5c86c4";
     renderColorList();

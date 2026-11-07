@@ -34,6 +34,65 @@ function setTheme(theme, opts) {
     themeToggle.setAttribute("aria-label", label);
     themeToggle.title = label;
   }
+  updateBrandChrome();
+}
+
+// --- favicon + browser bar follow the palette -----------------------------
+// The tab icon is the logo mark drawn in the current accent colours, and the
+// mobile address bar takes the page background, so a re-coloured site (an
+// orange theme, say) never shows the default blue icon.
+const HEX_COLOR_RE = /^#[0-9a-f]{3,8}$/i;
+let cmsPaletteLoaded = false; // only remember the icon once the saved palette is on
+let cmsSettled = CMS_EDIT_MODE || !window.__cmsContent; // the content request has finished
+function updateBrandChrome() {
+  if (!cmsSettled) {
+    // The saved palette is still on its way and the page shows the default
+    // colours: keep the icon remembered from the last visit instead of
+    // flashing the default blue.
+    try {
+      const mode = currentTheme();
+      const ic = localStorage.getItem("cms-favicon-" + mode);
+      const bar = localStorage.getItem("cms-bar-" + mode);
+      if (ic && ic.indexOf("data:image/svg+xml,") === 0) {
+        document.querySelector("link[rel~='icon']").setAttribute("href", ic);
+        if (bar && HEX_COLOR_RE.test(bar)) document.querySelector("meta[name='theme-color']").setAttribute("content", bar);
+        return;
+      }
+    } catch (e) {}
+  }
+  const cs = getComputedStyle(root);
+  const pick = (name, fallback) => {
+    const v = cs.getPropertyValue(name).trim();
+    return HEX_COLOR_RE.test(v) ? v : fallback;
+  };
+  const bg = pick("--accent", "#5c86c4");
+  const fg = pick("--on-accent", "#0a1120");
+  const bar = pick("--bg", "#07080b");
+  const markEl = document.querySelector(".brand-mark");
+  const letter = ((markEl && markEl.textContent.trim()) || "S").slice(0, 2);
+  const esc = (s) => s.replace(/[&<>"']/g, (c) => "&#" + c.charCodeAt(0) + ";");
+  const size = letter.length > 1 ? 46 : 62;
+  const svg =
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>" +
+    "<rect width='100' height='100' rx='24' fill='" + bg + "'/>" +
+    "<text x='50' y='" + (letter.length > 1 ? 66 : 70) + "' font-family='Arial, sans-serif' font-size='" + size +
+    "' font-weight='bold' fill='" + fg + "' text-anchor='middle'>" + esc(letter) + "</text></svg>";
+  const href = "data:image/svg+xml," + encodeURIComponent(svg);
+
+  const icon = document.querySelector("link[rel~='icon']");
+  if (icon && icon.getAttribute("href") !== href) icon.setAttribute("href", href);
+  const meta = document.querySelector("meta[name='theme-color']");
+  if (meta) meta.setAttribute("content", bar);
+
+  // remembered per mode so the next visit starts with the right icon (the
+  // editor preview must not overwrite what visitors' browsers remember)
+  if (cmsPaletteLoaded && !CMS_EDIT_MODE) {
+    try {
+      const mode = currentTheme();
+      localStorage.setItem("cms-favicon-" + mode, href);
+      localStorage.setItem("cms-bar-" + mode, bar);
+    } catch (e) {}
+  }
 }
 setTheme(currentTheme());
 
@@ -118,6 +177,7 @@ function cmsApplyColors(colors) {
   const c = colors || {};
   // same specificity as the stylesheet's own blocks, and later, so these win
   style.textContent = block(":root", c.dark) + block(':root[data-theme="light"]', c.light);
+  updateBrandChrome();
 }
 
 function cmsApplyText(text) {
@@ -284,6 +344,8 @@ function cmsApply(data) {
   cmsApplyText(data.text);
   cmsApplyLinks(data.links);
   cmsApplyDefaultTheme(data.defaultTheme);
+  cmsPaletteLoaded = true;
+  updateBrandChrome(); // after the logo letter and theme are final
 }
 
 // the admin preview drives the page through this
@@ -307,11 +369,15 @@ window.__cms = {
 if (!CMS_EDIT_MODE && window.__cmsContent) {
   window.__cmsContent
     .then((data) => {
+      cmsSettled = true;
       try {
         cmsApply(data);
       } catch (e) {
         console.error("Could not apply saved content", e);
       }
+      // no palette arrived (API down): match the icon to the colours shown,
+      // without overwriting the remembered one
+      if (!cmsPaletteLoaded) updateBrandChrome();
     })
     .finally(() => root.classList.remove("cms-pending"));
 }
