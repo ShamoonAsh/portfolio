@@ -1799,6 +1799,12 @@
     return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", 0.9));
   }
 
+  // "Open live banner" always fetches a fresh copy, never a cached older one
+  function bustShareLink() {
+    $("shareOpen").href = "/api/og?t=" + Date.now();
+  }
+  $("shareOpen").addEventListener("click", bustShareLink);
+
   let shareUrl = null;
   async function renderSharePreview() {
     if (!cms) return null;
@@ -1816,6 +1822,7 @@
       return el ? el.getAttribute("content") : "";
     };
     $("shareDomain").textContent = siteHost();
+    bustShareLink();
     $("shareTitle").textContent = meta("og:title");
     $("shareDesc").textContent = meta("og:description");
     renderSharePreview();
@@ -1844,6 +1851,7 @@
       const blob = await drawShareBanner();
       if (!blob) throw new Error("Couldn't draw the banner.");
       const res = await api("/api/admin/share", { method: "PUT", body: { dataBase64: await blobToBase64(blob) } });
+      bustShareLink();
       if (!$("tab-share").hidden) {
         $("shareStatus").textContent = "Live banner last updated " + new Date(res.banner.updatedAt).toLocaleString() + ".";
         renderSharePreview();

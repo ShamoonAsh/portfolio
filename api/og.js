@@ -38,10 +38,11 @@ module.exports = async (req, res) => {
 
   res.setHeader("Content-Type", "image/jpeg");
   res.setHeader("Content-Length", String(img.length));
-  // crawlers may keep it an hour; Vercel's edge refreshes every minute so a
-  // new banner is picked up quickly by anyone fetching fresh
-  res.setHeader("Cache-Control", "public, max-age=3600");
-  res.setHeader("Vercel-CDN-Cache-Control", "max-age=60, stale-while-revalidate=86400");
+  // Short everywhere, and never stale-while-revalidate: with SWR the first
+  // request after a quiet spell (often a crawler) got the *previous* banner.
+  // A new banner reaches browsers, apps and the edge within a minute.
+  res.setHeader("Cache-Control", "public, max-age=60");
+  res.setHeader("Vercel-CDN-Cache-Control", "max-age=60");
   res.statusCode = 200;
   return res.end(req.method === "HEAD" ? undefined : img);
 };
