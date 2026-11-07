@@ -74,7 +74,7 @@
 
     <aside class="panel">
       <div class="tabs" role="tablist">
-        <button type="button" role="tab" id="tabBtn-text" aria-controls="tab-text" aria-selected="true" data-tab="text">Text</button>
+        <button type="button" role="tab" id="tabBtn-text" aria-controls="tab-text" aria-selected="true" data-tab="text">Content</button>
         <button type="button" role="tab" id="tabBtn-colors" aria-controls="tab-colors" aria-selected="false" data-tab="colors">Colours</button>
         <button type="button" role="tab" id="tabBtn-resume" aria-controls="tab-resume" aria-selected="false" data-tab="resume">Resume</button>
       </div>
@@ -82,7 +82,7 @@
       <!-- text -->
       <section class="tab-panel" id="tab-text" role="tabpanel" aria-labelledby="tabBtn-text">
         <div class="hint">
-          <p><strong>Click any text in the preview</strong> to edit it in place.</p>
+          <p><strong>Click any text in the preview</strong> to edit it in place. Click a card or item to move, duplicate or remove it.</p>
           <ul class="keys">
             <li><kbd>Enter</kbd> new line</li>
             <li><kbd>Ctrl</kbd>+<kbd>B</kbd> bold</li>
@@ -93,13 +93,29 @@
         </div>
 
         <div class="card selected" id="selected" hidden>
-          <div class="card-head">
-            <span class="eyebrow">Selected</span>
-            <span class="pill" id="selWhere"></span>
+          <div id="selTextPart">
+            <div class="card-head">
+              <span class="eyebrow">Selected text</span>
+              <span class="pill" id="selWhere"></span>
+            </div>
+            <p class="sel-label">Original text</p>
+            <p class="sel-original" id="selOriginal"></p>
+            <div class="sel-actions">
+              <button class="btn btn-ghost btn-sm" type="button" id="selRestore">Restore original</button>
+              <button class="btn btn-ghost btn-sm" type="button" id="selHide" title="Clears the text; the layout closes the gap">Hide text</button>
+            </div>
+            <label class="field link-field" id="selLinkField" hidden>
+              <span>Link</span>
+              <input id="selLink" type="text" inputmode="url" spellcheck="false" placeholder="https://… , #section or mailto:…" />
+              <small class="small" id="selLinkHint">Where this button or link goes.</small>
+            </label>
           </div>
-          <p class="sel-label">Original text</p>
-          <p class="sel-original" id="selOriginal"></p>
-          <button class="btn btn-ghost btn-sm" type="button" id="selRestore">Restore original</button>
+
+          <div id="selStructPart" hidden>
+            <span class="eyebrow">Position</span>
+            <ul class="chain" id="selChain"></ul>
+            <p class="small">Duplicate makes a copy right below it. That's how you add a new project, job, bullet point, tag and so on. Then edit its text.</p>
+          </div>
         </div>
 
         <div class="list-head">
@@ -108,11 +124,29 @@
         </div>
         <ul class="change-list" id="changeList"></ul>
         <p class="empty" id="changeEmpty">Nothing changed yet. Edits show here so you can jump back to them.</p>
+
+        <div class="list-head">
+          <h2>Removed items <span class="count" id="removedCount">0</span></h2>
+          <button class="link-btn" type="button" id="resetLayout" hidden>Restore original layout</button>
+        </div>
+        <ul class="change-list" id="removedList"></ul>
+        <p class="empty" id="removedEmpty">Nothing removed. Anything you remove shows here so you can bring it back.</p>
       </section>
 
       <!-- colours -->
       <section class="tab-panel" id="tab-colors" role="tabpanel" aria-labelledby="tabBtn-colors" hidden>
-        <div class="row-between">
+        <div class="card brand-card">
+          <span class="eyebrow">Theme from one colour</span>
+          <p class="small">Pick a colour and both the dark and light themes are rebuilt around it: backgrounds, cards, text, buttons and the hero gradient all get matching shades. Fine-tune any of them below.</p>
+          <div class="brand-row">
+            <input type="color" id="brandColor" value="#5c86c4" aria-label="Theme colour" />
+            <input type="text" class="hex" id="brandHex" maxlength="7" spellcheck="false" value="#5c86c4" aria-label="Theme colour hex value" />
+          </div>
+          <div class="swatches" id="swatches" role="group" aria-label="Preset colours"></div>
+          <button class="link-btn" type="button" id="brandReset">Back to the original blue</button>
+        </div>
+
+        <div class="row-between palette-head">
           <span class="eyebrow">Editing palette</span>
           <div class="seg seg-sm" role="group" aria-label="Theme to edit" id="themeSeg">
             <button type="button" data-theme="dark" aria-pressed="true">Dark</button>

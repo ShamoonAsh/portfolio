@@ -54,9 +54,17 @@ except the form, which needs the function running.
 
 - **Text**: click any text in the preview and type. Every editable element
   has a `data-k="<section>.<n>"` attribute in `index.html`; only edited keys
-  are stored. Allowed formatting: line breaks, bold, italic.
-- **Colours**: separate Dark and Light palettes (the tokens at the top of
-  `styles.css`), plus which theme visitors get by default.
+  are stored. Allowed formatting: line breaks, bold, italic. Links/buttons get
+  an editable URL. "Hide text" clears it and the layout closes the gap.
+- **Layout**: click a card or item to move it up/down, duplicate it (how new
+  projects, jobs, bullets, tags, skills… are added) or remove it; removed
+  items can be restored. Repeatable containers are marked
+  `data-list="<id>" data-list-label="<kind>"`, their children `data-item="<id>"`.
+  A duplicate is rebuilt from a pristine copy of its original, with every id
+  inside it prefixed `<copyId>~`.
+- **Colours**: one-colour theme generator (builds both palettes around a
+  hue), separate Dark and Light palettes (the tokens at the top of
+  `styles.css`) for fine-tuning, plus which theme visitors get by default.
 - **Resume**: upload a PDF; the **Download Resume** button (`/api/resume`)
   serves it. With no upload, it serves `SYED_SHAMOON_ASHRAF_RESUME.pdf` from
   the repo.
@@ -66,9 +74,10 @@ Edits (and the uploaded resume) are stored in Upstash Redis and applied by
 `index.html` says, so nothing breaks. Saved changes reach visitors within
 about a minute (edge cache).
 
-**Keys are permanent.** Edits are stored against `data-k` keys. When you add
-new text to `index.html`, give it a new unused key (e.g. `projects.80`); don't
-renumber existing ones, or saved edits land on the wrong element.
+**Keys are permanent.** Edits are stored against `data-k`, `data-list` and
+`data-item` ids. When you add new markup to `index.html`, give it new unused
+ids (e.g. `projects.80`, `projects-i90`); don't renumber existing ones, or
+saved edits land on the wrong element.
 
 ### Setup
 

@@ -4,8 +4,15 @@
    The live site loads in an iframe at /?cms=edit. In that mode the
    site skips applying saved content, so the page shows exactly what
    index.html says. That's how the editor knows each element's
-   original text. The editor then layers the draft on top, and
-   window.__cms (from script.js) does the actual DOM work.
+   original text, link and layout. The editor then layers the draft
+   on top, and window.__cms (from script.js) does the DOM work.
+
+   Draft shape (same as the server stores):
+     text    { key: html }            edited texts
+     links   { key: href }            href of the <a> around that text
+     layout  { lists: { listId: [itemIds] }, clones: { newId: { from } } }
+     colors  { dark: {token: hex}, light: {...} }
+     defaultTheme
 
    Nothing here is a security boundary: every API call is checked on
    the server against the session cookie.
@@ -53,6 +60,19 @@
   const ALL_TOKENS = COLOR_GROUPS.flatMap((g) => g.tokens.map((t) => t.token));
   const THEMES = ["dark", "light"];
 
+  const PRESETS = [
+    { name: "Original blue", hex: "#5c86c4", reset: true },
+    { name: "Orange", hex: "#f97316" },
+    { name: "Red", hex: "#e5484d" },
+    { name: "Pink", hex: "#e93d82" },
+    { name: "Purple", hex: "#8e4ec6" },
+    { name: "Indigo", hex: "#5b5bd6" },
+    { name: "Teal", hex: "#12a594" },
+    { name: "Green", hex: "#30a46c" },
+    { name: "Gold", hex: "#e2a336" },
+    { name: "Slate", hex: "#64748b" },
+  ];
+
   const SECTION_NAMES = {
     nav: "Navigation",
     hero: "Hero",
@@ -65,21 +85,50 @@
   };
   const KIND_NAMES = { h1: "Heading", h2: "Heading", h3: "Heading", h4: "Heading", p: "Paragraph", li: "List item", a: "Link", label: "Form label" };
 
+  const ICONS = {
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
+    dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+    del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>',
+  };
+
   const $ = (id) => document.getElementById(id);
   const clone = (o) => JSON.parse(JSON.stringify(o));
-  const emptyContent = () => ({ version: 1, text: {}, colors: { dark: {}, light: {} }, defaultTheme: "dark" });
+  const has = (o, k) => Boolean(o) && Object.prototype.hasOwnProperty.call(o, k);
+  const emptyContent = () => ({
+    version: 1,
+    text: {},
+    links: {},
+    layout: { lists: {}, clones: {} },
+    colors: { dark: {}, light: {} },
+    defaultTheme: "dark",
+  });
+  // older saves may lack newer fields
+  const withDefaults = (c) => {
+    const base = emptyContent();
+    const out = Object.assign(base, clone(c || {}));
+    out.text = out.text || {};
+    out.links = out.links || {};
+    out.layout = out.layout || { lists: {}, clones: {} };
+    out.layout.lists = out.layout.lists || {};
+    out.layout.clones = out.layout.clones || {};
+    out.colors = out.colors || { dark: {}, light: {} };
+    THEMES.forEach((t) => (out.colors[t] = out.colors[t] || {}));
+    return out;
+  };
 
   const state = {
     saved: emptyContent(),
     draft: emptyContent(),
     updatedAt: null,
     originals: {}, // key -> original html, captured from the untouched page
-    meta: {}, // key -> { section, kind }
+    origHrefs: {}, // key -> original href of the <a> around it
+    meta: {}, // key -> { kind }
     defaults: { dark: {}, light: {} }, // token -> stylesheet value per theme
     previewTheme: "dark",
     editing: null, // element being edited in the preview
     editStart: "",
-    selectedKey: null,
+    sel: { key: null, item: null }, // what the Selected card shows
     saving: false,
     editorOpen: false,
   };
@@ -124,6 +173,7 @@
 
   function normalizeHex(value) {
     let v = String(value || "").trim().toLowerCase();
+    if (v && v[0] !== "#") v = "#" + v;
     if (/^#[0-9a-f]{3}$/.test(v)) v = "#" + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
     return /^#[0-9a-f]{6}$/.test(v) ? v : null;
   }
@@ -138,29 +188,52 @@
     toastTimer = setTimeout(() => (el.hidden = true), kind === "error" ? 7000 : 3800);
   }
 
+  const base = (id) => String(id).slice(String(id).lastIndexOf("~") + 1);
+  const prefixOf = (id) => {
+    const i = String(id).lastIndexOf("~");
+    return i < 0 ? "" : String(id).slice(0, i);
+  };
+  const sel = (attr, v) => "[" + attr + '="' + String(v).replace(/["\\]/g, "") + '"]';
+
+  function newCloneId() {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    let id = "n";
+    bytes.forEach((b) => (id += chars[b % chars.length]));
+    return has(state.draft.layout.clones, id) ? newCloneId() : id;
+  }
+
+  // originals for keys inside a duplicate come from the item it was copied from
+  const origFor = (key) => (has(state.originals, key) ? state.originals[key] : state.originals[base(key)] || "");
+  const origHrefFor = (key) => (has(state.origHrefs, key) ? state.origHrefs[key] : state.origHrefs[base(key)]);
+  const currentText = (key) => (has(state.draft.text, key) ? state.draft.text[key] : origFor(key));
+  const currentHref = (key) => (has(state.draft.links, key) ? state.draft.links[key] : origHrefFor(key));
+
   function keyLabel(key) {
-    const m = state.meta[key];
-    const section = SECTION_NAMES[key.split(".")[0]] || key.split(".")[0];
+    const b = base(key);
+    const m = state.meta[b];
+    const section = SECTION_NAMES[b.split(".")[0]] || b.split(".")[0];
     return m ? section + " · " + m.kind : section;
   }
 
   // ------------------------------------------------------------------
   // dirty tracking
   // ------------------------------------------------------------------
+  function diffKeys(a, b) {
+    let n = 0;
+    new Set(Object.keys(a || {}).concat(Object.keys(b || {}))).forEach((k) => {
+      if (JSON.stringify((a || {})[k]) !== JSON.stringify((b || {})[k])) n++;
+    });
+    return n;
+  }
+
   function changeCount() {
     const a = state.draft;
     const b = state.saved;
-    let n = 0;
-    new Set(Object.keys(a.text).concat(Object.keys(b.text))).forEach((k) => {
-      if (a.text[k] !== b.text[k]) n++;
-    });
-    THEMES.forEach((t) => {
-      const ac = a.colors[t] || {};
-      const bc = b.colors[t] || {};
-      new Set(Object.keys(ac).concat(Object.keys(bc))).forEach((k) => {
-        if (ac[k] !== bc[k]) n++;
-      });
-    });
+    let n = diffKeys(a.text, b.text) + diffKeys(a.links, b.links) + diffKeys(a.layout.lists, b.layout.lists);
+    if (JSON.stringify(a.layout.clones) !== JSON.stringify(b.layout.clones) && diffKeys(a.layout.lists, b.layout.lists) === 0) n++;
+    THEMES.forEach((t) => (n += diffKeys(a.colors[t], b.colors[t])));
     if (a.defaultTheme !== b.defaultTheme) n++;
     return n;
   }
@@ -281,7 +354,7 @@
       toast(e.message, "error");
       return;
     }
-    state.saved = content.data || emptyContent();
+    state.saved = withDefaults(content.data);
     state.draft = clone(state.saved);
     state.updatedAt = content.updatedAt || null;
     state.previewTheme = state.draft.defaultTheme === "light" ? "light" : "dark";
@@ -291,8 +364,8 @@
     $("app").hidden = false;
     $("defaultTheme").value = state.draft.defaultTheme;
     syncThemeSeg();
+    renderSwatches();
     updateDirty();
-    renderChangeList();
 
     frame.addEventListener("load", setupFrame);
     frame.src = "/?cms=edit";
@@ -306,7 +379,7 @@
     } catch (e) {
       cms = null;
     }
-    if (!cms || !doc) {
+    if (!cms || !doc || !cms.applyLayout) {
       toast("The preview navigated away from the site. Reloading it.", "error");
       setTimeout(() => (frame.src = "/?cms=edit"), 1200);
       return;
@@ -314,11 +387,14 @@
 
     state.editing = null;
     state.originals = {};
+    state.origHrefs = {};
     state.meta = {};
     doc.querySelectorAll("[data-k]").forEach((el) => {
       const key = el.getAttribute("data-k");
       state.originals[key] = cms.get(el);
       state.meta[key] = { kind: KIND_NAMES[el.tagName.toLowerCase()] || "Text" };
+      const a = el.closest("a");
+      if (a) state.origHrefs[key] = a.getAttribute("href");
     });
 
     captureDefaults();
@@ -328,8 +404,7 @@
     wireFrame();
 
     renderPreview();
-    renderChangeList();
-    renderSelected();
+    renderAllPanels();
     renderColorList();
   }
 
@@ -356,8 +431,10 @@
       "[data-k]:hover{outline-color:rgba(92,134,196,.9)}",
       "[data-k].cms-changed{outline-color:rgba(245,166,35,.85)}",
       "[data-k].cms-editing{outline:2px solid #5c86c4!important;background:rgba(92,134,196,.14);caret-color:currentColor}",
-      "[data-k]:empty::before{content:'(empty)';opacity:.45;font-style:italic}",
-      "[data-k].cms-flash{animation:cmsFlash 1.4s ease}",
+      "[data-k]:empty::before{content:'(hidden, click to add text)';opacity:.5;font-style:italic;font-weight:400;font-size:12px}",
+      "[data-item]{cursor:pointer}",
+      "[data-item].cms-sel-item{outline:2px solid rgba(245,166,35,.95)!important;outline-offset:4px}",
+      ".cms-flash{animation:cmsFlash 1.4s ease}",
       "@keyframes cmsFlash{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,0)}25%{box-shadow:0 0 0 6px rgba(245,166,35,.55)}}",
     ].join("\n");
     doc.head.appendChild(style);
@@ -366,23 +443,39 @@
   // ------------------------------------------------------------------
   // preview <-> draft
   // ------------------------------------------------------------------
-  function elFor(key) {
-    return doc ? doc.querySelector('[data-k="' + key.replace(/"/g, "") + '"]') : null;
-  }
+  const elFor = (key) => (doc ? doc.querySelector(sel("data-k", key)) : null);
+  const itemEl = (id) => (doc && id ? doc.querySelector(sel("data-item", id)) : null);
 
   function renderPreview() {
     if (!cms) return;
-    Object.keys(state.originals).forEach((key) => {
-      const el = elFor(key);
-      if (!el) return;
-      const changed = Object.prototype.hasOwnProperty.call(state.draft.text, key);
-      el.classList.toggle("cms-changed", changed);
-      if (el === state.editing) return;
-      const want = changed ? state.draft.text[key] : state.originals[key];
-      if (cms.get(el) !== want) cms.set(el, want);
+    cms.applyLayout(state.draft.layout, { full: true });
+    doc.querySelectorAll("[data-k]").forEach((el) => {
+      const key = el.getAttribute("data-k");
+      el.classList.toggle("cms-changed", has(state.draft.text, key) || has(state.draft.links, key));
+      if (el !== state.editing) {
+        const want = currentText(key);
+        if (cms.get(el) !== want) cms.set(el, want);
+      }
+      const a = el.closest("a");
+      const href = currentHref(key);
+      if (a && typeof href === "string" && a.getAttribute("href") !== href) a.setAttribute("href", href);
     });
     cms.applyColors(state.draft.colors);
     cms.setTheme(state.previewTheme);
+    markSelectedItem();
+  }
+
+  function markSelectedItem() {
+    if (!doc) return;
+    doc.querySelectorAll(".cms-sel-item").forEach((el) => el.classList.remove("cms-sel-item"));
+    const el = itemEl(state.sel.item);
+    if (el) el.classList.add("cms-sel-item");
+  }
+
+  function select(key, itemId) {
+    state.sel = { key: key || null, item: itemId || null };
+    markSelectedItem();
+    renderSelected();
   }
 
   function wireFrame() {
@@ -411,6 +504,16 @@
             syncThemeSeg();
             renderColorList();
           }, 0);
+          return;
+        }
+
+        // a click on a card/item (not its text) selects the item
+        const item = target.closest("[data-item]");
+        if (item) {
+          e.preventDefault();
+          finishEdit();
+          select(null, item.getAttribute("data-item"));
+          showTab("text");
         }
       },
       true
@@ -495,16 +598,16 @@
       range.selectNodeContents(el);
       range.collapse(false);
     }
-    const sel = win.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+    const s = win.getSelection();
+    s.removeAllRanges();
+    s.addRange(range);
   }
 
   function startEdit(el, evt) {
     finishEdit();
     const key = el.getAttribute("data-k");
+    const item = el.closest("[data-item]");
     state.editing = el;
-    state.selectedKey = key;
     state.editStart = cms.get(el);
     el.innerHTML = state.editStart; // drop decorations (tech logos) while typing
     el.setAttribute("contenteditable", "true");
@@ -513,20 +616,23 @@
     el.focus({ preventScroll: true });
     placeCaret(el, evt);
     showTab("text");
-    renderSelected();
+    select(key, item ? item.getAttribute("data-item") : null);
+  }
+
+  function setText(key, value) {
+    if (value === origFor(key)) delete state.draft.text[key];
+    else state.draft.text[key] = value;
   }
 
   function onEditInput() {
     const el = state.editing;
     if (!el) return;
     const key = el.getAttribute("data-k");
-    const value = cms.clean(el.innerHTML);
-    if (value === state.originals[key]) delete state.draft.text[key];
-    else state.draft.text[key] = value;
-    el.classList.toggle("cms-changed", Object.prototype.hasOwnProperty.call(state.draft.text, key));
+    setText(key, cms.clean(el.innerHTML));
+    el.classList.toggle("cms-changed", has(state.draft.text, key) || has(state.draft.links, key));
     updateDirty();
     renderChangeList();
-    renderSelected();
+    renderSelectedText();
   }
 
   function finishEdit() {
@@ -535,57 +641,349 @@
     state.editing = null;
     el.removeAttribute("contenteditable");
     el.classList.remove("cms-editing");
-    const key = el.getAttribute("data-k");
-    const has = Object.prototype.hasOwnProperty.call(state.draft.text, key);
-    cms.set(el, has ? state.draft.text[key] : state.originals[key]); // normalised + logos back
+    cms.set(el, currentText(el.getAttribute("data-k"))); // normalised + logos back
   }
 
   function restoreKey(key) {
     if (state.editing && state.editing.getAttribute("data-k") === key) {
-      state.editing.innerHTML = state.originals[key] || "";
+      state.editing.innerHTML = origFor(key);
       state.editStart = state.editing.innerHTML;
     }
     delete state.draft.text[key];
-    renderPreview();
-    updateDirty();
-    renderChangeList();
-    renderSelected();
+    delete state.draft.links[key];
+    afterChange();
   }
 
-  function scrollToKey(key) {
-    const el = elFor(key);
+  function flash(el) {
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     el.classList.remove("cms-flash");
     void el.offsetWidth; // restart the animation
     el.classList.add("cms-flash");
-    state.selectedKey = key;
-    renderSelected();
+  }
+
+  function afterChange() {
+    pruneLayout();
+    renderPreview();
+    updateDirty();
+    renderAllPanels();
   }
 
   // ------------------------------------------------------------------
-  // text panel
+  // layout: move / duplicate / remove / restore
   // ------------------------------------------------------------------
+  const listIdOf = (list) => list.getAttribute("data-list");
+  const orderOf = (list) => cms.itemsOf(list).map((el) => el.getAttribute("data-item"));
+
+  function setOrder(listId, order) {
+    const def = cms.defaultOrder(listId);
+    const same = order.length === def.length && order.every((v, i) => v === def[i]);
+    if (same) delete state.draft.layout.lists[listId];
+    else state.draft.layout.lists[listId] = order.slice();
+  }
+
+  // Mirrors the server's clean-up: drop duplicates nothing places on the page,
+  // and anything (text, links, lists) that belonged to them.
+  function pruneLayout() {
+    const L = state.draft.layout;
+    for (let changed = true; changed; ) {
+      changed = false;
+      Object.keys(L.lists).forEach((id) => {
+        const p = prefixOf(id);
+        if (p && !has(L.clones, p)) {
+          delete L.lists[id];
+          changed = true;
+        }
+      });
+      const placed = new Set();
+      Object.keys(L.lists).forEach((id) => L.lists[id].forEach((x) => placed.add(x)));
+      Object.keys(L.clones).forEach((id) => {
+        if (!placed.has(id)) {
+          delete L.clones[id];
+          changed = true;
+        }
+      });
+    }
+    ["text", "links"].forEach((field) => {
+      Object.keys(state.draft[field]).forEach((k) => {
+        const p = prefixOf(k);
+        if (p && !has(L.clones, p)) delete state.draft[field][k];
+      });
+    });
+  }
+
+  function moveItem(el, dir) {
+    finishEdit();
+    const list = el.parentElement;
+    const order = orderOf(list);
+    const id = el.getAttribute("data-item");
+    const i = order.indexOf(id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    order.splice(i, 1);
+    order.splice(j, 0, id);
+    setOrder(listIdOf(list), order);
+    afterChange();
+    flash(itemEl(id));
+  }
+
+  // insideNestedClone: true if node belongs to a duplicate nested within src
+  function insideNestedClone(node, src) {
+    let it = node.closest("[data-item]");
+    while (it && it !== src) {
+      if (has(state.draft.layout.clones, it.getAttribute("data-item"))) return true;
+      it = it.parentElement ? it.parentElement.closest("[data-item]") : null;
+    }
+    return false;
+  }
+
+  // Record a copy of `src` (as it currently looks) under the new id.
+  function copyItemState(src, newId) {
+    const L = state.draft.layout;
+    const srcId = src.getAttribute("data-item");
+    L.clones[newId] = { from: has(L.clones, srcId) ? L.clones[srcId].from : base(srcId) };
+
+    const keyEls = (src.hasAttribute("data-k") ? [src] : []).concat(Array.from(src.querySelectorAll("[data-k]")));
+    keyEls.forEach((kel) => {
+      if (insideNestedClone(kel, src)) return; // copied by its own recursion
+      const k = kel.getAttribute("data-k");
+      const nk = newId + "~" + base(k);
+      const val = currentText(k);
+      if (val !== origFor(nk)) state.draft.text[nk] = val;
+      const href = currentHref(k);
+      if (typeof href === "string" && href !== origHrefFor(nk)) state.draft.links[nk] = href;
+    });
+
+    src.querySelectorAll("[data-list]").forEach((list) => {
+      if (insideNestedClone(list, src)) return;
+      const order = cms.itemsOf(list).map((child) => {
+        const cid = child.getAttribute("data-item");
+        if (has(L.clones, cid)) {
+          const n2 = newCloneId();
+          copyItemState(child, n2);
+          return n2;
+        }
+        return newId + "~" + base(cid);
+      });
+      setOrder(newId + "~" + base(listIdOf(list)), order);
+    });
+  }
+
+  function duplicateItem(el) {
+    finishEdit();
+    const list = el.parentElement;
+    const order = orderOf(list);
+    const id = el.getAttribute("data-item");
+    const newId = newCloneId();
+    copyItemState(el, newId);
+    order.splice(order.indexOf(id) + 1, 0, newId);
+    setOrder(listIdOf(list), order);
+    afterChange();
+    const fresh = itemEl(newId);
+    select(null, newId);
+    flash(fresh);
+    toast("Copy added below. Click its text to edit it.");
+  }
+
+  function removeItem(el) {
+    finishEdit();
+    const list = el.parentElement;
+    const id = el.getAttribute("data-item");
+    const isCopy = has(state.draft.layout.clones, id);
+    const label = list.getAttribute("data-list-label") || "Item";
+    if (isCopy && !confirm("Delete this " + label.toLowerCase() + "? It's a copy you added, so it can't be restored.")) return;
+    setOrder(listIdOf(list), orderOf(list).filter((x) => x !== id));
+    // select the parent item, if any
+    const parent = list.closest("[data-item]");
+    select(null, parent ? parent.getAttribute("data-item") : null);
+    afterChange();
+    toast(isCopy ? label + " deleted." : label + " removed. You can restore it from Removed items.");
+  }
+
+  function restoreItem(listId, id) {
+    const list = doc.querySelector(sel("data-list", listId));
+    if (!list) return;
+    const def = cms.defaultOrder(listId);
+    const order = orderOf(list);
+    const want = def.indexOf(id);
+    let at = order.length;
+    for (let i = 0; i < order.length; i++) {
+      const d = def.indexOf(order[i]);
+      if (d > want) {
+        at = i;
+        break;
+      }
+    }
+    order.splice(at, 0, id);
+    setOrder(listId, order);
+    afterChange();
+    select(null, id);
+    flash(itemEl(id));
+  }
+
+  // a short name for an item: its own text, else its heading, else its first text
+  function itemSnippet(el) {
+    const k = el.hasAttribute("data-k")
+      ? el
+      : el.querySelector(":is(h1, h2, h3, h4)[data-k]:not(:empty)") ||
+        el.querySelector("[data-k]:not(:empty)") ||
+        el.querySelector("[data-k]");
+    if (!k) return "";
+    const key = k.getAttribute("data-k");
+    return htmlToText(currentText(key)).replace(/\s+/g, " ").trim().slice(0, 60);
+  }
+
+  // ------------------------------------------------------------------
+  // content panel
+  // ------------------------------------------------------------------
+  function renderAllPanels() {
+    renderSelected();
+    renderChangeList();
+    renderRemoved();
+  }
+
   function renderSelected() {
-    const key = state.selectedKey;
     const box = $("selected");
-    if (!key || !Object.prototype.hasOwnProperty.call(state.originals, key)) {
+    const keyOk = state.sel.key && elFor(state.sel.key);
+    const itemOk = state.sel.item && itemEl(state.sel.item);
+    if (!keyOk && !itemOk) {
       box.hidden = true;
       return;
     }
     box.hidden = false;
-    $("selWhere").textContent = keyLabel(key);
-    $("selOriginal").textContent = htmlToText(state.originals[key]) || "(empty)";
-    $("selRestore").disabled = !Object.prototype.hasOwnProperty.call(state.draft.text, key);
+    $("selTextPart").hidden = !keyOk;
+    if (keyOk) renderSelectedText();
+    renderChain();
   }
 
-  $("selRestore").addEventListener("click", () => state.selectedKey && restoreKey(state.selectedKey));
+  function renderSelectedText() {
+    const key = state.sel.key;
+    if (!key) return;
+    $("selWhere").textContent = keyLabel(key);
+    $("selOriginal").textContent = htmlToText(origFor(key)) || "(empty)";
+    $("selRestore").disabled = !has(state.draft.text, key) && !has(state.draft.links, key);
+    $("selHide").disabled = currentText(key) === "";
+
+    const el = elFor(key);
+    const a = el && el.closest("a");
+    const field = $("selLinkField");
+    field.hidden = !a;
+    if (a) {
+      const input = $("selLink");
+      if (document.activeElement !== input) {
+        input.value = currentHref(key) || "";
+        input.removeAttribute("aria-invalid");
+      }
+    }
+  }
+
+  $("selRestore").addEventListener("click", () => state.sel.key && restoreKey(state.sel.key));
+
+  $("selHide").addEventListener("click", () => {
+    const key = state.sel.key;
+    if (!key) return;
+    finishEdit();
+    setText(key, "");
+    afterChange();
+    toast("Hidden. On the live site the space closes up. Click the placeholder to add text again.");
+  });
+
+  $("selLink").addEventListener("input", () => {
+    const key = state.sel.key;
+    if (!key) return;
+    const input = $("selLink");
+    const v = input.value.trim();
+    if (!cms.linkRe.test(v)) {
+      input.setAttribute("aria-invalid", "true");
+      $("selLinkHint").textContent = "Use https://…, mailto:…, tel:…, #section-id or /path.";
+      return;
+    }
+    input.removeAttribute("aria-invalid");
+    $("selLinkHint").textContent = "Where this button or link goes.";
+    if (v === origHrefFor(key)) delete state.draft.links[key];
+    else state.draft.links[key] = v;
+    const el = elFor(key);
+    const a = el && el.closest("a");
+    if (a) a.setAttribute("href", v);
+    if (el) el.classList.toggle("cms-changed", has(state.draft.text, key) || has(state.draft.links, key));
+    updateDirty();
+    renderChangeList();
+    $("selRestore").disabled = !has(state.draft.text, key) && !has(state.draft.links, key);
+  });
+
+  function iconBtn(icon, label, onClick, opts) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "icon-btn" + (opts && opts.danger ? " danger" : "");
+    b.innerHTML = ICONS[icon];
+    b.title = label;
+    b.setAttribute("aria-label", label);
+    b.disabled = Boolean(opts && opts.disabled);
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  function renderChain() {
+    const ul = $("selChain");
+    ul.textContent = "";
+    let el = itemEl(state.sel.item);
+    const rows = [];
+    while (el) {
+      const list = el.parentElement;
+      if (!list || !list.hasAttribute("data-list")) break;
+      rows.push({ el, list });
+      el = list.parentElement ? list.parentElement.closest("[data-item]") : null;
+    }
+    $("selStructPart").hidden = rows.length === 0;
+
+    rows.forEach(({ el: item, list }, i) => {
+      const order = orderOf(list);
+      const id = item.getAttribute("data-item");
+      const idx = order.indexOf(id);
+      const label = list.getAttribute("data-list-label") || "Item";
+
+      const li = document.createElement("li");
+      if (i === 0) li.className = "is-current";
+
+      const name = document.createElement("div");
+      name.className = "chain-name";
+      name.title = "Show it in the preview";
+      const kind = document.createElement("span");
+      kind.className = "chain-kind";
+      kind.textContent = label + (has(state.draft.layout.clones, id) ? " (copy)" : "") + " · " + (idx + 1) + " of " + order.length;
+      const text = document.createElement("span");
+      text.className = "chain-text";
+      text.textContent = itemSnippet(item) || "(no text)";
+      name.append(kind, text);
+      if (item.id) {
+        const anchor = document.createElement("span");
+        anchor.className = "chain-anchor";
+        anchor.textContent = "link to it: #" + item.id;
+        name.appendChild(anchor);
+      }
+      name.addEventListener("click", () => {
+        select(state.sel.key, id);
+        flash(item);
+      });
+
+      const btns = document.createElement("div");
+      btns.className = "chain-btns";
+      btns.append(
+        iconBtn("up", "Move " + label.toLowerCase() + " up", () => moveItem(item, -1), { disabled: idx <= 0 }),
+        iconBtn("down", "Move " + label.toLowerCase() + " down", () => moveItem(item, 1), { disabled: idx >= order.length - 1 }),
+        iconBtn("dup", "Duplicate " + label.toLowerCase(), () => duplicateItem(item), { disabled: item.hasAttribute("data-nodup") }),
+        iconBtn("del", "Remove " + label.toLowerCase(), () => removeItem(item), { danger: true })
+      );
+
+      li.append(name, btns);
+      ul.appendChild(li);
+    });
+  }
 
   function renderChangeList() {
     const list = $("changeList");
-    const keys = Object.keys(state.draft.text);
-    // page order first, then anything no longer on the page
-    const order = Object.keys(state.originals);
+    const keys = Array.from(new Set(Object.keys(state.draft.text).concat(Object.keys(state.draft.links))));
+    const order = Array.from(doc ? doc.querySelectorAll("[data-k]") : []).map((el) => el.getAttribute("data-k"));
     keys.sort((a, b) => {
       const ia = order.indexOf(a);
       const ib = order.indexOf(b);
@@ -603,12 +1001,19 @@
       item.className = "ch-item";
       const where = document.createElement("span");
       where.className = "ch-where";
-      where.textContent = gone ? key + " (no longer on the page)" : keyLabel(key);
+      where.textContent = keyLabel(key) + (gone ? " (removed from the page)" : "");
       const text = document.createElement("span");
       text.className = "ch-text";
-      text.textContent = htmlToText(state.draft.text[key]).replace(/\s+/g, " ") || "(empty)";
+      const t = htmlToText(currentText(key)).replace(/\s+/g, " ");
+      text.textContent = (t || "(hidden)") + (has(state.draft.links, key) ? "  →  " + state.draft.links[key] : "");
       item.append(where, text);
-      item.addEventListener("click", () => scrollToKey(key));
+      item.addEventListener("click", () => {
+        const el = elFor(key);
+        if (!el) return;
+        const it = el.closest("[data-item]");
+        select(key, it ? it.getAttribute("data-item") : null);
+        flash(el);
+      });
 
       const reset = document.createElement("button");
       reset.type = "button";
@@ -628,13 +1033,65 @@
   }
 
   $("restoreAllText").addEventListener("click", () => {
-    if (!confirm("Restore every edited text to what's in index.html? (Nothing is saved until you press Save.)")) return;
+    if (!confirm("Restore every edited text and link to what's in index.html? (Nothing is saved until you press Save.)")) return;
     finishEdit();
     state.draft.text = {};
-    renderPreview();
-    updateDirty();
-    renderChangeList();
-    renderSelected();
+    state.draft.links = {};
+    afterChange();
+  });
+
+  function renderRemoved() {
+    const ul = $("removedList");
+    ul.textContent = "";
+    let count = 0;
+    if (doc) {
+      doc.querySelectorAll("[data-list]").forEach((list) => {
+        const listId = listIdOf(list);
+        const present = new Set(orderOf(list));
+        cms.defaultOrder(listId).forEach((id) => {
+          if (present.has(id)) return;
+          count++;
+          const label = list.getAttribute("data-list-label") || "Item";
+          const tmp = cms.buildItem(id, state.draft.layout.clones);
+          const snippet = tmp ? itemSnippet(tmp) : id;
+          const owner = list.closest("[data-item]");
+
+          const li = document.createElement("li");
+          const info = document.createElement("div");
+          info.className = "ch-item";
+          const where = document.createElement("span");
+          where.className = "ch-where";
+          where.textContent = label + (owner && owner.closest("[data-list]") !== list ? " in “" + itemSnippet(owner).slice(0, 30) + "”" : "");
+          const text = document.createElement("span");
+          text.className = "ch-text";
+          text.textContent = snippet || "(no text)";
+          info.append(where, text);
+
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "ch-reset";
+          btn.title = "Restore";
+          btn.setAttribute("aria-label", "Restore " + label.toLowerCase());
+          btn.textContent = "↺";
+          btn.addEventListener("click", () => restoreItem(listId, id));
+
+          li.append(info, btn);
+          ul.appendChild(li);
+        });
+      });
+    }
+    $("removedCount").textContent = String(count);
+    $("removedEmpty").hidden = count > 0;
+    const layoutChanged = Object.keys(state.draft.layout.lists).length > 0;
+    $("resetLayout").hidden = !layoutChanged;
+  }
+
+  $("resetLayout").addEventListener("click", () => {
+    if (!confirm("Put every section and item back in its original place, and delete all copies you added? (Nothing is saved until you press Save.)")) return;
+    finishEdit();
+    state.draft.layout = { lists: {}, clones: {} };
+    select(null, null);
+    afterChange();
   });
 
   // ------------------------------------------------------------------
@@ -719,21 +1176,22 @@
         reset.setAttribute("aria-label", "Restore default " + t.label);
         reset.textContent = "↺";
 
+        const mark = () => row.classList.toggle("is-changed", Boolean((state.draft.colors[theme] || {})[t.token]));
         const sync = () => {
           const v = colorValue(theme, t.token);
           picker.value = v;
           hex.value = v;
           hex.removeAttribute("aria-invalid");
-          row.classList.toggle("is-changed", Boolean((state.draft.colors[theme] || {})[t.token]));
+          mark();
         };
 
         picker.addEventListener("input", () => {
           setColor(theme, t.token, picker.value.toLowerCase());
           hex.value = picker.value.toLowerCase();
-          row.classList.toggle("is-changed", Boolean((state.draft.colors[theme] || {})[t.token]));
+          mark();
         });
         hex.addEventListener("input", () => {
-          const v = normalizeHex(hex.value.startsWith("#") ? hex.value : "#" + hex.value);
+          const v = normalizeHex(hex.value);
           if (!v) {
             hex.setAttribute("aria-invalid", "true");
             return;
@@ -741,7 +1199,7 @@
           hex.removeAttribute("aria-invalid");
           picker.value = v;
           setColor(theme, t.token, v);
-          row.classList.toggle("is-changed", Boolean((state.draft.colors[theme] || {})[t.token]));
+          mark();
         });
         hex.addEventListener("blur", sync);
         reset.addEventListener("click", () => {
@@ -762,8 +1220,150 @@
     state.draft.colors[state.previewTheme] = {};
     if (cms) cms.applyColors(state.draft.colors);
     renderColorList();
+    renderSwatches();
     updateDirty();
   });
+
+  // ---- theme from one colour ------------------------------------------
+  // Builds both palettes around one hue, keeping the proportions of the
+  // original blue design (near-black tinted backgrounds, light tinted text,
+  // a saturated gradient), and nudging lightness until each pairing meets
+  // its contrast target, so any colour gives readable text.
+  const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  function luminance(hex) {
+    const c = rgbOf(hex).map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function contrast(a, b) {
+    const la = luminance(a);
+    const lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+  function hexToHsl(hex) {
+    const [r, g, b] = rgbOf(hex);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, s, l];
+  }
+  function hsl(h, s, l) {
+    s = Math.max(0, Math.min(1, s));
+    l = Math.max(0, Math.min(1, l));
+    const k = (n) => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return "#" + [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("");
+  }
+  // move lightness in `dir` until the colour reaches `min` contrast against `bg`
+  function fit(h, s, l, bg, min, dir) {
+    let hex = hsl(h, s, l);
+    for (let i = 0; i < 100 && contrast(hex, bg) < min; i++) {
+      l += dir * 0.01;
+      hex = hsl(h, s, l);
+    }
+    return hex;
+  }
+
+  function generatePalettes(baseHex) {
+    const [H, S, L] = hexToHsl(baseHex);
+    const cs = (v) => Math.max(0, Math.min(0.9, v));
+    const t = Math.min(S, 0.5) * 0.5; // tint strength for the neutrals
+    const grad = {
+      "--grad-1": fit(H, cs(S * 0.82), 0.47, "#ffffff", 3, -1),
+      "--grad-2": fit(H, cs(S * 0.9), 0.39, "#ffffff", 3.6, -1),
+      "--grad-3": fit(H, cs(S * 0.95), 0.33, "#ffffff", 4.5, -1),
+      "--grad-4": hsl(H, cs(S), 0.16),
+    };
+
+    const dark = {};
+    dark["--bg"] = hsl(H, t, 0.035);
+    dark["--surface"] = hsl(H, t, 0.07);
+    dark["--surface-2"] = hsl(H, cs(t * 1.15), 0.105);
+    dark["--text"] = hsl(H, cs(t * 1.1), 0.955);
+    dark["--text-2"] = hsl(H, t * 0.25, 0.78);
+    dark["--muted"] = hsl(H, t * 0.4, 0.61);
+    dark["--accent"] = fit(H, S, L, dark["--bg"], 4.5, 1);
+    dark["--accent-soft"] = fit(H, cs(S * 1.25), Math.max(L, 0.6) + 0.08, dark["--bg"], 7, 1);
+    const ink = hsl(H, 0.5, 0.08);
+    dark["--on-accent"] = contrast(dark["--accent"], ink) >= contrast(dark["--accent"], "#ffffff") ? ink : "#ffffff";
+    Object.assign(dark, grad);
+
+    const light = {};
+    light["--bg"] = hsl(H, cs(t * 1.4), 0.97);
+    light["--surface"] = "#ffffff";
+    light["--surface-2"] = hsl(H, cs(t * 2), 0.95);
+    light["--text"] = hsl(H, cs(t * 1.8), 0.09);
+    light["--text-2"] = hsl(H, t * 0.7, 0.27);
+    light["--muted"] = hsl(H, t * 0.5, 0.41);
+    light["--accent"] = fit(H, S, Math.min(L, 0.51), "#ffffff", 4.5, -1);
+    light["--accent-soft"] = fit(H, cs(S * 1.1), Math.min(L, 0.41), "#ffffff", 6, -1);
+    light["--on-accent"] = "#ffffff";
+    Object.assign(light, grad);
+
+    return { dark, light };
+  }
+
+  let brandHex = null; // the colour last applied from this card, for the swatch highlight
+
+  function applyBrand(hex, opts) {
+    const v = normalizeHex(hex);
+    if (!v) return;
+    brandHex = v;
+    const pal = generatePalettes(v);
+    THEMES.forEach((theme) => {
+      const map = {};
+      ALL_TOKENS.forEach((tok) => {
+        if (pal[theme][tok] && pal[theme][tok] !== state.defaults[theme][tok]) map[tok] = pal[theme][tok];
+      });
+      state.draft.colors[theme] = map;
+    });
+    if (cms) cms.applyColors(state.draft.colors);
+    $("brandColor").value = v;
+    if (!(opts && opts.fromHex)) $("brandHex").value = v;
+    renderColorList();
+    renderSwatches();
+    updateDirty();
+  }
+
+  function resetBrand() {
+    brandHex = null;
+    state.draft.colors = { dark: {}, light: {} };
+    if (cms) cms.applyColors(state.draft.colors);
+    $("brandColor").value = "#5c86c4";
+    $("brandHex").value = "#5c86c4";
+    renderColorList();
+    renderSwatches();
+    updateDirty();
+  }
+
+  function renderSwatches() {
+    const host = $("swatches");
+    host.textContent = "";
+    const noColors = THEMES.every((t) => Object.keys(state.draft.colors[t] || {}).length === 0);
+    PRESETS.forEach((p) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch";
+      b.style.background = p.hex;
+      b.title = p.name;
+      b.setAttribute("aria-label", p.name);
+      b.setAttribute("aria-pressed", String(p.reset ? noColors : brandHex === p.hex));
+      b.addEventListener("click", () => (p.reset ? resetBrand() : applyBrand(p.hex)));
+      host.appendChild(b);
+    });
+  }
+
+  $("brandColor").addEventListener("input", (e) => applyBrand(e.target.value));
+  $("brandHex").addEventListener("input", (e) => {
+    const v = normalizeHex(e.target.value);
+    e.target.setAttribute("aria-invalid", v ? "false" : "true");
+    if (v) applyBrand(v, { fromHex: true });
+  });
+  $("brandReset").addEventListener("click", resetBrand);
 
   // ------------------------------------------------------------------
   // tabs, preview width
@@ -811,7 +1411,7 @@
       $("resumeRemove").hidden = true;
       $("dzTitle").textContent = "Upload a new PDF";
     }
-    // bust the browser's cache of the redirect so "Download current" is current
+    // bust the browser's cache so "Download current" is current
     $("resumeOpen").href = "/api/resume?t=" + Date.now();
   }
 
@@ -863,15 +1463,15 @@
 
   $("resumeFile").addEventListener("change", (e) => uploadResumeFile(e.target.files[0]));
 
-  const zone = $("dropzone");
+  const dropzone = $("dropzone");
   ["dragenter", "dragover"].forEach((t) =>
-    zone.addEventListener(t, (e) => {
+    dropzone.addEventListener(t, (e) => {
       e.preventDefault();
-      zone.classList.add("is-over");
+      dropzone.classList.add("is-over");
     })
   );
-  ["dragleave", "drop"].forEach((t) => zone.addEventListener(t, () => zone.classList.remove("is-over")));
-  zone.addEventListener("drop", (e) => {
+  ["dragleave", "drop"].forEach((t) => dropzone.addEventListener(t, () => dropzone.classList.remove("is-over")));
+  dropzone.addEventListener("drop", (e) => {
     e.preventDefault();
     uploadResumeFile(e.dataTransfer.files[0]);
   });
@@ -892,6 +1492,7 @@
   // ------------------------------------------------------------------
   async function save() {
     if (state.saving || changeCount() === 0) return;
+    pruneLayout();
     state.saving = true;
     setStatus("saving", "Saving…");
     updateDirty();
@@ -901,13 +1502,13 @@
         method: "PUT",
         body: { data: state.draft, baseUpdatedAt: state.updatedAt },
       });
-      state.saved = res.data;
+      state.saved = withDefaults(res.data);
       state.updatedAt = res.updatedAt;
-      // adopt the server's cleaned-up copy, unless typing continued meanwhile
+      // adopt the server's cleaned-up copy, unless editing continued meanwhile
       if (JSON.stringify(state.draft) === sent) {
-        state.draft = clone(res.data);
+        state.draft = clone(state.saved);
         renderPreview();
-        renderChangeList();
+        renderAllPanels();
       }
       toast("Saved. Visitors will see it within about a minute.");
     } catch (e) {
@@ -935,9 +1536,9 @@
     state.draft = clone(state.saved);
     $("defaultTheme").value = state.draft.defaultTheme;
     renderPreview();
-    renderChangeList();
-    renderSelected();
+    renderAllPanels();
     renderColorList();
+    renderSwatches();
     updateDirty();
   });
 

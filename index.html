@@ -21,7 +21,8 @@
     var t = localStorage.getItem("theme");
     if (t === "light" || t === "dark") { d.setAttribute("data-theme", t); d.setAttribute("data-theme-source", "user"); }
   } catch (e) {}
-  if (/[?&]cms=edit\b/.test(location.search) || !window.fetch) return;
+  if (/[?&]cms=edit\b/.test(location.search)) { d.classList.add("cms-edit"); return; }
+  if (!window.fetch) return;
   d.classList.add("cms-pending");
   window.__cmsContent = fetch("/api/content", { headers: { Accept: "application/json" } })
     .then(function (r) { return r.ok ? r.json() : null; })
@@ -67,12 +68,12 @@
       <span class="brand-text" data-k="nav.2">Shamoon</span>
     </a>
 
-    <nav class="nav-links" id="navLinks">
-      <a href="#top" data-k="nav.3">Home</a>
-      <a href="#about" data-k="nav.4">About</a>
-      <a href="#projects" data-k="nav.5">Projects</a>
-      <a href="#experience" data-k="nav.6">Experience</a>
-      <a href="#skills" data-k="nav.7">Skills</a>
+    <nav class="nav-links" id="navLinks" data-list="nav-l1" data-list-label="Menu link">
+      <a href="#top" data-k="nav.3" data-item="nav-i1">Home</a>
+      <a href="#about" data-k="nav.4" data-item="nav-i2">About</a>
+      <a href="#projects" data-k="nav.5" data-item="nav-i3">Projects</a>
+      <a href="#experience" data-k="nav.6" data-item="nav-i4">Experience</a>
+      <a href="#skills" data-k="nav.7" data-item="nav-i5">Skills</a>
     </nav>
 
     <div class="nav-actions">
@@ -93,10 +94,10 @@
   </div>
 </header>
 
-<main id="top">
+<main id="top" data-list="page-l1" data-list-label="Section">
 
   <!-- ============ HERO ============ -->
-  <section class="hero shell">
+  <section class="hero shell" data-item="sec-hero" data-nodup="">
     <div class="hero-card">
       <div class="hero-tint" aria-hidden="true"></div>
 
@@ -119,32 +120,32 @@
         </div>
       </div>
 
-      <ul class="hero-services">
-        <li><span class="num" data-k="hero.8">01</span><span class="lbl" data-k="hero.9">.NET Development</span></li>
-        <li><span class="num" data-k="hero.10">02</span><span class="lbl" data-k="hero.11">Dynamics 365 F&amp;O</span></li>
-        <li><span class="num" data-k="hero.12">03</span><span class="lbl" data-k="hero.13">SQL &amp; Databases</span></li>
-        <li><span class="num" data-k="hero.14">04</span><span class="lbl" data-k="hero.15">AI Automation</span></li>
+      <ul class="hero-services" data-list="hero-l1" data-list-label="Service">
+        <li data-item="hero-i1"><span class="num" data-k="hero.8">01</span><span class="lbl" data-k="hero.9">.NET Development</span></li>
+        <li data-item="hero-i2"><span class="num" data-k="hero.10">02</span><span class="lbl" data-k="hero.11">Dynamics 365 F&amp;O</span></li>
+        <li data-item="hero-i3"><span class="num" data-k="hero.12">03</span><span class="lbl" data-k="hero.13">SQL &amp; Databases</span></li>
+        <li data-item="hero-i4"><span class="num" data-k="hero.14">04</span><span class="lbl" data-k="hero.15">AI Automation</span></li>
       </ul>
     </div>
 
     <!-- tech strip -->
     <div class="strip reveal">
       <p class="strip-label" data-k="hero.16">Tools I build with every day</p>
-      <div class="strip-set">
-        <span class="chip" data-k="hero.17">C#</span>
-        <span class="chip" data-k="hero.18">.NET / MVC</span>
-        <span class="chip" data-k="hero.19">SQL Server</span>
-        <span class="chip" data-k="hero.20">Dynamics 365</span>
-        <span class="chip" data-k="hero.21">X++</span>
-        <span class="chip" data-k="hero.22">Power Platform</span>
-        <span class="chip" data-k="hero.23">Python</span>
-        <span class="chip" data-k="hero.24">REST APIs</span>
+      <div class="strip-set" data-list="hero-l2" data-list-label="Tool">
+        <span class="chip" data-k="hero.17" data-item="hero-i5">C#</span>
+        <span class="chip" data-k="hero.18" data-item="hero-i6">.NET / MVC</span>
+        <span class="chip" data-k="hero.19" data-item="hero-i7">SQL Server</span>
+        <span class="chip" data-k="hero.20" data-item="hero-i8">Dynamics 365</span>
+        <span class="chip" data-k="hero.21" data-item="hero-i9">X++</span>
+        <span class="chip" data-k="hero.22" data-item="hero-i10">Power Platform</span>
+        <span class="chip" data-k="hero.23" data-item="hero-i11">Python</span>
+        <span class="chip" data-k="hero.24" data-item="hero-i12">REST APIs</span>
       </div>
     </div>
   </section>
 
   <!-- ============ ABOUT ============ -->
-  <section class="section shell" id="about">
+  <section class="section shell" id="about" data-item="sec-about">
     <p class="kicker reveal" data-k="about.1">Behind the Code</p>
     <div class="about-grid">
       <h2 class="display reveal" data-k="about.2">Building systems<br />that make work<br />simpler</h2>
@@ -161,14 +162,14 @@
           an AI email assistant that drafts replies but never sends without approval.
           Currently gaining hands-on D365 F&amp;O experience at Hull Technologies.
         </p>
-        <div class="about-cta">
-          <a class="btn btn-primary" href="#contact">
+        <div class="about-cta" data-list="about-l1" data-list-label="Button">
+          <a class="btn btn-primary" href="#contact" data-item="about-i1">
             <span data-k="about.5">Let's build something</span>
             <span class="btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none"><path d="M6 18 18 6M18 6H9M18 6v9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </span>
           </a>
-          <a class="btn btn-ghost" href="/api/resume" download="Syed-Shamoon-Ashraf-Resume.pdf" data-k="about.6">Download Resume</a>
+          <a class="btn btn-ghost" href="/api/resume" download="Syed-Shamoon-Ashraf-Resume.pdf" data-k="about.6" data-item="about-i2">Download Resume</a>
         </div>
       </div>
     </div>
@@ -176,7 +177,7 @@
   </section>
 
   <!-- ============ PROJECTS ============ -->
-  <section class="section shell" id="projects">
+  <section class="section shell" id="projects" data-item="sec-projects">
     <div class="section-head">
       <div>
         <p class="kicker reveal" data-k="projects.1">Selected Work</p>
@@ -185,8 +186,8 @@
       <p class="section-note reveal" data-k="projects.3">Things I built to learn something new, and then kept improving.</p>
     </div>
 
-    <div class="projects">
-      <article class="project project-featured reveal">
+    <div class="projects" data-list="projects-l1" data-list-label="Project">
+      <article class="project project-featured reveal" data-item="projects-i1">
         <div class="project-top">
           <span class="project-num" data-k="projects.4">01</span>
           <div class="project-top-right">
@@ -200,14 +201,14 @@
           donors ever see it, identity checks, an approval workflow and card payments
           end to end.
         </p>
-        <ul class="project-points">
-          <li data-k="projects.9">CNIC-based sign-up with phone OTP, plus a 4-digit MPIN gate on every donation.</li>
-          <li data-k="projects.10">On-device OCR (Google ML Kit) reads the CNIC and supporting documents to verify a request.</li>
-          <li data-k="projects.11">Stripe test-mode card payments, push notifications and an admin approval workflow.</li>
-          <li data-k="projects.12">Standalone web admin panel for reviewing requests and tracking organisation stats.</li>
+        <ul class="project-points" data-list="projects-l2" data-list-label="Point">
+          <li data-k="projects.9" data-item="projects-i7">CNIC-based sign-up with phone OTP, plus a 4-digit MPIN gate on every donation.</li>
+          <li data-k="projects.10" data-item="projects-i8">On-device OCR (Google ML Kit) reads the CNIC and supporting documents to verify a request.</li>
+          <li data-k="projects.11" data-item="projects-i9">Stripe test-mode card payments, push notifications and an admin approval workflow.</li>
+          <li data-k="projects.12" data-item="projects-i10">Standalone web admin panel for reviewing requests and tracking organisation stats.</li>
         </ul>
-        <div class="tags">
-          <span data-k="projects.13">Flutter</span><span data-k="projects.14">Firebase Auth</span><span data-k="projects.15">Firestore</span><span data-k="projects.16">Stripe</span><span data-k="projects.17">Google ML Kit</span>
+        <div class="tags" data-list="projects-l3" data-list-label="Tag">
+          <span data-k="projects.13" data-item="projects-i11">Flutter</span><span data-k="projects.14" data-item="projects-i12">Firebase Auth</span><span data-k="projects.15" data-item="projects-i13">Firestore</span><span data-k="projects.16" data-item="projects-i14">Stripe</span><span data-k="projects.17" data-item="projects-i15">Google ML Kit</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/EhsaasPay" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
@@ -215,7 +216,7 @@
         </a>
       </article>
 
-      <article class="project project-featured reveal">
+      <article class="project project-featured reveal" data-item="projects-i2">
         <div class="project-top">
           <span class="project-num" data-k="projects.19">02</span>
           <span class="project-date" data-k="projects.20">07/2026</span>
@@ -225,14 +226,14 @@
           A full storefront for handmade crochet products, browsing and checkout on
           the front, and a complete admin back office behind it.
         </p>
-        <ul class="project-points">
-          <li data-k="projects.23">Shop, product and category pages with cart, wishlist and order tracking.</li>
-          <li data-k="projects.24">Stripe checkout confirmed by a webhook route, with coupon and discount support.</li>
-          <li data-k="projects.25">Admin panel for products, orders, customers, coupons, reviews, blog and custom requests.</li>
-          <li data-k="projects.26">Supabase Postgres schema plus a custom-order request flow and transactional email.</li>
+        <ul class="project-points" data-list="projects-l4" data-list-label="Point">
+          <li data-k="projects.23" data-item="projects-i16">Shop, product and category pages with cart, wishlist and order tracking.</li>
+          <li data-k="projects.24" data-item="projects-i17">Stripe checkout confirmed by a webhook route, with coupon and discount support.</li>
+          <li data-k="projects.25" data-item="projects-i18">Admin panel for products, orders, customers, coupons, reviews, blog and custom requests.</li>
+          <li data-k="projects.26" data-item="projects-i19">Supabase Postgres schema plus a custom-order request flow and transactional email.</li>
         </ul>
-        <div class="tags">
-          <span data-k="projects.27">Next.js</span><span data-k="projects.28">TypeScript</span><span data-k="projects.29">Supabase</span><span data-k="projects.30">Stripe</span><span data-k="projects.31">Tailwind CSS</span>
+        <div class="tags" data-list="projects-l5" data-list-label="Tag">
+          <span data-k="projects.27" data-item="projects-i20">Next.js</span><span data-k="projects.28" data-item="projects-i21">TypeScript</span><span data-k="projects.29" data-item="projects-i22">Supabase</span><span data-k="projects.30" data-item="projects-i23">Stripe</span><span data-k="projects.31" data-item="projects-i24">Tailwind CSS</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/ecommerce-crochet-website" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
@@ -240,7 +241,7 @@
         </a>
       </article>
 
-      <article class="project reveal">
+      <article class="project reveal" data-item="projects-i3">
         <div class="project-top">
           <span class="project-num" data-k="projects.33">03</span>
           <span class="project-date" data-k="projects.34">07/2026</span>
@@ -250,12 +251,12 @@
           An AI-powered assistant that reads incoming email, understands intent and
           drafts an intelligent reply.
         </p>
-        <ul class="project-points">
-          <li data-k="projects.37">Extracts key context from each thread and writes a personalised response.</li>
-          <li data-k="projects.38">Nothing is sent until the user approves it, accuracy and full control.</li>
+        <ul class="project-points" data-list="projects-l6" data-list-label="Point">
+          <li data-k="projects.37" data-item="projects-i25">Extracts key context from each thread and writes a personalised response.</li>
+          <li data-k="projects.38" data-item="projects-i26">Nothing is sent until the user approves it, accuracy and full control.</li>
         </ul>
-        <div class="tags">
-          <span data-k="projects.39">Python</span><span data-k="projects.40">Gmail API</span><span data-k="projects.41">Gemini API</span><span data-k="projects.42">Streamlit</span>
+        <div class="tags" data-list="projects-l7" data-list-label="Tag">
+          <span data-k="projects.39" data-item="projects-i27">Python</span><span data-k="projects.40" data-item="projects-i28">Gmail API</span><span data-k="projects.41" data-item="projects-i29">Gemini API</span><span data-k="projects.42" data-item="projects-i30">Streamlit</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/EmailAssistant" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
@@ -263,7 +264,7 @@
         </a>
       </article>
 
-      <article class="project reveal">
+      <article class="project reveal" data-item="projects-i4">
         <div class="project-top">
           <span class="project-num" data-k="projects.44">04</span>
           <span class="project-date" data-k="projects.45">08/2025 - 09/2025</span>
@@ -273,13 +274,13 @@
           An AI-powered WhatsApp chatbot providing dynamic, context-aware
           responses using Google Gemini.
         </p>
-        <ul class="project-points">
-          <li data-k="projects.48">Built with Python, Meta WhatsApp Cloud API and Google Gemini API.</li>
-          <li data-k="projects.49">Integrated Gemini for dynamic AI-generated replies.</li>
-          <li data-k="projects.50">Used Ngrok for webhook integration and local testing.</li>
+        <ul class="project-points" data-list="projects-l8" data-list-label="Point">
+          <li data-k="projects.48" data-item="projects-i31">Built with Python, Meta WhatsApp Cloud API and Google Gemini API.</li>
+          <li data-k="projects.49" data-item="projects-i32">Integrated Gemini for dynamic AI-generated replies.</li>
+          <li data-k="projects.50" data-item="projects-i33">Used Ngrok for webhook integration and local testing.</li>
         </ul>
-        <div class="tags">
-          <span data-k="projects.51">Python</span><span data-k="projects.52">Google Gemini API</span><span data-k="projects.53">Meta WhatsApp Cloud API</span><span data-k="projects.54">Ngrok</span>
+        <div class="tags" data-list="projects-l9" data-list-label="Tag">
+          <span data-k="projects.51" data-item="projects-i34">Python</span><span data-k="projects.52" data-item="projects-i35">Google Gemini API</span><span data-k="projects.53" data-item="projects-i36">Meta WhatsApp Cloud API</span><span data-k="projects.54" data-item="projects-i37">Ngrok</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/AIPoweredWhatsappBot" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
@@ -287,7 +288,7 @@
         </a>
       </article>
 
-      <article class="project reveal">
+      <article class="project reveal" data-item="projects-i5">
         <div class="project-top">
           <span class="project-num" data-k="projects.56">05</span>
           <span class="project-date" data-k="projects.57">09/2024</span>
@@ -297,12 +298,12 @@
           A Windows application handling sales transactions, inventory and customer
           data for retail stores.
         </p>
-        <ul class="project-points">
-          <li data-k="projects.60">Real-time billing, stock updates and reporting against SQL Server.</li>
-          <li data-k="projects.61">Focused on a clean, user-friendly interface for non-technical staff.</li>
+        <ul class="project-points" data-list="projects-l10" data-list-label="Point">
+          <li data-k="projects.60" data-item="projects-i38">Real-time billing, stock updates and reporting against SQL Server.</li>
+          <li data-k="projects.61" data-item="projects-i39">Focused on a clean, user-friendly interface for non-technical staff.</li>
         </ul>
-        <div class="tags">
-          <span data-k="projects.62">C#</span><span data-k="projects.63">Visual Studio</span><span data-k="projects.64">MS SQL Server</span>
+        <div class="tags" data-list="projects-l11" data-list-label="Tag">
+          <span data-k="projects.62" data-item="projects-i40">C#</span><span data-k="projects.63" data-item="projects-i41">Visual Studio</span><span data-k="projects.64" data-item="projects-i42">MS SQL Server</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/Point-of-Sale" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
@@ -310,7 +311,7 @@
         </a>
       </article>
 
-      <article class="project reveal">
+      <article class="project reveal" data-item="projects-i6">
         <div class="project-top">
           <span class="project-num" data-k="projects.66">06</span>
           <span class="project-date" data-k="projects.67">08/2024</span>
@@ -320,12 +321,12 @@
           A system to manage student records, course enrollments and academics,
           with secure login functionality.
         </p>
-        <ul class="project-points">
-          <li data-k="projects.70">Designed the relational database and set foreign key constraints across students, courses and enrollments.</li>
-          <li data-k="projects.71">Implemented CRUD operations with input validation behind a secure login.</li>
+        <ul class="project-points" data-list="projects-l12" data-list-label="Point">
+          <li data-k="projects.70" data-item="projects-i43">Designed the relational database and set foreign key constraints across students, courses and enrollments.</li>
+          <li data-k="projects.71" data-item="projects-i44">Implemented CRUD operations with input validation behind a secure login.</li>
         </ul>
-        <div class="tags">
-          <span data-k="projects.72">C#</span><span data-k="projects.73">Visual Studio</span><span data-k="projects.74">Microsoft SQL Server</span>
+        <div class="tags" data-list="projects-l13" data-list-label="Tag">
+          <span data-k="projects.72" data-item="projects-i45">C#</span><span data-k="projects.73" data-item="projects-i46">Visual Studio</span><span data-k="projects.74" data-item="projects-i47">Microsoft SQL Server</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/Student-Management-and-Enrollnment-System" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
@@ -336,7 +337,7 @@
   </section>
 
   <!-- ============ EXPERIENCE ============ -->
-  <section class="section shell" id="experience">
+  <section class="section shell" id="experience" data-item="sec-experience">
     <div class="section-head">
       <div>
         <p class="kicker reveal" data-k="experience.1">Where I've Been</p>
@@ -345,56 +346,56 @@
       <p class="section-note reveal" data-k="experience.3">Internships, training and the degree behind it all.</p>
     </div>
 
-    <div class="timeline">
-      <div class="tl-item reveal">
+    <div class="timeline" data-list="experience-l1" data-list-label="Entry">
+      <div class="tl-item reveal" data-item="experience-i1">
         <div class="tl-when" data-k="experience.4">08/2026 - 09/2026</div>
         <div class="tl-body">
           <h3 data-k="experience.5">Software Development Intern</h3>
           <p class="tl-org" data-k="experience.6">Pakistan Atomic Energy Commission</p>
-          <ul>
-            <li data-k="experience.7">Conducted vulnerability testing, created technical documentation and provided installation guidance for the FPIS project to enhance security and usability.</li>
-            <li data-k="experience.8">Developed a Paper Ream Management System to streamline A3/A4 paper allocation, manage employee records and facilitate admin approval workflows.</li>
-            <li data-k="experience.9">Engineered a PDF Document Management System for scanning, uploading and running CRUD operations on documents to organise and manage digital files.</li>
+          <ul data-list="experience-l2" data-list-label="Point">
+            <li data-k="experience.7" data-item="experience-i6">Conducted vulnerability testing, created technical documentation and provided installation guidance for the FPIS project to enhance security and usability.</li>
+            <li data-k="experience.8" data-item="experience-i7">Developed a Paper Ream Management System to streamline A3/A4 paper allocation, manage employee records and facilitate admin approval workflows.</li>
+            <li data-k="experience.9" data-item="experience-i8">Engineered a PDF Document Management System for scanning, uploading and running CRUD operations on documents to organise and manage digital files.</li>
           </ul>
         </div>
       </div>
 
-      <div class="tl-item reveal">
+      <div class="tl-item reveal" data-item="experience-i2">
         <div class="tl-when" data-k="experience.10">10/2024 - 07/2026</div>
         <div class="tl-body">
           <h3 data-k="experience.11">Microsoft Dynamics 365 FinOps</h3>
           <p class="tl-org" data-k="experience.12">Hull Technologies</p>
-          <ul>
-            <li data-k="experience.13">Gained hands-on experience in Microsoft Dynamics 365 Finance &amp; Operations while working part-time at Hull Technologies alongside university studies, contributing to real-time projects and developing practical skills in D365 F&amp;O development.</li>
+          <ul data-list="experience-l3" data-list-label="Point">
+            <li data-k="experience.13" data-item="experience-i9">Gained hands-on experience in Microsoft Dynamics 365 Finance &amp; Operations while working part-time at Hull Technologies alongside university studies, contributing to real-time projects and developing practical skills in D365 F&amp;O development.</li>
           </ul>
         </div>
       </div>
 
-      <div class="tl-item reveal">
+      <div class="tl-item reveal" data-item="experience-i3">
         <div class="tl-when" data-k="experience.14">08/2025 - 10/2025</div>
         <div class="tl-body">
           <h3 data-k="experience.15">Software Engineering Intern</h3>
           <p class="tl-org" data-k="experience.16">Orient Energy Systems Pvt Ltd</p>
-          <ul>
-            <li data-k="experience.17">Worked with the IT development team to customise the company CRM built on MVC .NET, including automated email notifications.</li>
-            <li data-k="experience.18">Designed and implemented a dynamic salespersons grid with department-wise listing, CRUD operations and search.</li>
-            <li data-k="experience.19">Developed and optimised SQL stored procedures powering automated weekly and monthly email updates.</li>
+          <ul data-list="experience-l4" data-list-label="Point">
+            <li data-k="experience.17" data-item="experience-i10">Worked with the IT development team to customise the company CRM built on MVC .NET, including automated email notifications.</li>
+            <li data-k="experience.18" data-item="experience-i11">Designed and implemented a dynamic salespersons grid with department-wise listing, CRUD operations and search.</li>
+            <li data-k="experience.19" data-item="experience-i12">Developed and optimised SQL stored procedures powering automated weekly and monthly email updates.</li>
           </ul>
         </div>
       </div>
 
-      <div class="tl-item reveal">
+      <div class="tl-item reveal" data-item="experience-i4">
         <div class="tl-when" data-k="experience.20">10/2022 - 07/2026</div>
         <div class="tl-body">
           <h3 data-k="experience.21">B.S. Computer Science</h3>
           <p class="tl-org" data-k="experience.22">DHA Suffa University</p>
-          <ul>
-            <li data-k="experience.23">Core software engineering, databases and programming fundamentals.</li>
+          <ul data-list="experience-l5" data-list-label="Point">
+            <li data-k="experience.23" data-item="experience-i13">Core software engineering, databases and programming fundamentals.</li>
           </ul>
         </div>
       </div>
 
-      <div class="tl-item reveal">
+      <div class="tl-item reveal" data-item="experience-i5">
         <div class="tl-when" data-k="experience.24">10/2020 - 06/2022</div>
         <div class="tl-body">
           <h3 data-k="experience.25">H.Sc. Pre-Engineering</h3>
@@ -405,7 +406,7 @@
   </section>
 
   <!-- ============ SKILLS + CERTS ============ -->
-  <section class="section shell" id="skills">
+  <section class="section shell" id="skills" data-item="sec-skills">
     <div class="section-head">
       <div>
         <p class="kicker reveal" data-k="skills.1">Toolkit</p>
@@ -414,42 +415,42 @@
       <p class="section-note reveal" data-k="skills.3">The stack I reach for, and the paper that backs it.</p>
     </div>
 
-    <div class="skills-grid reveal">
-      <div class="skill-col">
+    <div class="skills-grid reveal" data-list="skills-l1" data-list-label="Skill group">
+      <div class="skill-col" data-item="skills-i1">
         <h4 data-k="skills.4">Languages</h4>
-        <ul><li data-k="skills.5">C#</li><li data-k="skills.6">X++</li><li data-k="skills.7">Python</li><li data-k="skills.8">T-SQL</li></ul>
+        <ul data-list="skills-l2" data-list-label="Skill"><li data-k="skills.5" data-item="skills-i5">C#</li><li data-k="skills.6" data-item="skills-i6">X++</li><li data-k="skills.7" data-item="skills-i7">Python</li><li data-k="skills.8" data-item="skills-i8">T-SQL</li></ul>
       </div>
-      <div class="skill-col">
+      <div class="skill-col" data-item="skills-i2">
         <h4 data-k="skills.9">Platforms</h4>
-        <ul><li data-k="skills.10">.NET / MVC</li><li data-k="skills.11">Dynamics 365 F&amp;O</li><li data-k="skills.12">Dynamics CRM</li><li data-k="skills.13">Power Platform</li></ul>
+        <ul data-list="skills-l3" data-list-label="Skill"><li data-k="skills.10" data-item="skills-i9">.NET / MVC</li><li data-k="skills.11" data-item="skills-i10">Dynamics 365 F&amp;O</li><li data-k="skills.12" data-item="skills-i11">Dynamics CRM</li><li data-k="skills.13" data-item="skills-i12">Power Platform</li></ul>
       </div>
-      <div class="skill-col">
+      <div class="skill-col" data-item="skills-i3">
         <h4 data-k="skills.14">Data</h4>
-        <ul><li data-k="skills.15">Microsoft SQL Server</li><li data-k="skills.16">Stored procedures</li><li data-k="skills.17">Database design</li><li data-k="skills.18">Reporting</li></ul>
+        <ul data-list="skills-l4" data-list-label="Skill"><li data-k="skills.15" data-item="skills-i13">Microsoft SQL Server</li><li data-k="skills.16" data-item="skills-i14">Stored procedures</li><li data-k="skills.17" data-item="skills-i15">Database design</li><li data-k="skills.18" data-item="skills-i16">Reporting</li></ul>
       </div>
-      <div class="skill-col">
+      <div class="skill-col" data-item="skills-i4">
         <h4 data-k="skills.19">Other</h4>
-        <ul><li data-k="skills.20">REST APIs</li><li data-k="skills.21">ERP workflows</li><li data-k="skills.22">Visual Studio</li><li data-k="skills.23">Streamlit</li></ul>
+        <ul data-list="skills-l5" data-list-label="Skill"><li data-k="skills.20" data-item="skills-i17">REST APIs</li><li data-k="skills.21" data-item="skills-i18">ERP workflows</li><li data-k="skills.22" data-item="skills-i19">Visual Studio</li><li data-k="skills.23" data-item="skills-i20">Streamlit</li></ul>
       </div>
     </div>
 
-    <div class="certs">
-      <article class="cert reveal">
+    <div class="certs" data-list="skills-l6" data-list-label="Certificate">
+      <article class="cert reveal" data-item="skills-i21">
         <h4 data-k="skills.24">Databases and SQL for Data Science with Python</h4>
         <p class="cert-org" data-k="skills.25">IBM &middot; Coursera</p>
         <p data-k="skills.26">SQL fundamentals, database design and Python-based data analysis.</p>
       </article>
-      <article class="cert reveal">
+      <article class="cert reveal" data-item="skills-i22">
         <h4 data-k="skills.27">C# Certification</h4>
         <p class="cert-org" data-k="skills.28">HackerRank</p>
         <p data-k="skills.29">Core object-oriented programming concepts and data structures in C#.</p>
       </article>
-      <article class="cert reveal">
+      <article class="cert reveal" data-item="skills-i23">
         <h4 data-k="skills.30">Introduction to AI</h4>
         <p class="cert-org" data-k="skills.31">Google &middot; Coursera</p>
         <p data-k="skills.32">An online course authorized by Google and offered through Coursera.</p>
       </article>
-      <article class="cert reveal">
+      <article class="cert reveal" data-item="skills-i24">
         <h4 data-k="skills.33">Microsoft Dynamics CRM &amp; Power Platform</h4>
         <p class="cert-org" data-k="skills.34">Mazik Global &amp; SMIT &middot; 02/2025 - 06/2025</p>
         <p data-k="skills.35">Course covering the fundamentals of Microsoft Dynamics CRM and the Power Platform.</p>
@@ -458,7 +459,7 @@
   </section>
 
   <!-- ============ CONTACT ============ -->
-  <section class="contact shell" id="contact">
+  <section class="contact shell" id="contact" data-item="sec-contact" data-nodup="">
     <div class="contact-card reveal">
       <div class="contact-tint" aria-hidden="true"></div>
       <p class="eyebrow" data-k="contact.1">Let's talk</p>
@@ -510,16 +511,16 @@
       <span class="brand-mark" data-k="footer.1">S</span>
       <span class="brand-text" data-k="footer.2">Shamoon</span>
     </a>
-    <nav class="footer-links">
-      <a class="social" href="https://www.linkedin.com/in/shamoonashraf/" target="_blank" rel="noopener" aria-label="LinkedIn">
+    <nav class="footer-links" data-list="footer-l1" data-list-label="Social link">
+      <a class="social" href="https://www.linkedin.com/in/shamoonashraf/" target="_blank" rel="noopener" aria-label="LinkedIn" data-item="footer-i1">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM3 9h4v12H3V9Zm7 0h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05C20.9 8.65 22 10.6 22 14v7h-4v-6.2c0-1.55-.55-2.6-1.9-2.6-1.05 0-1.67.7-1.95 1.38-.1.24-.13.58-.13.92V21h-4V9Z"/></svg>
         <span data-k="footer.3">LinkedIn</span>
       </a>
-      <a class="social" href="https://github.com/ShamoonAsh" target="_blank" rel="noopener" aria-label="GitHub">
+      <a class="social" href="https://github.com/ShamoonAsh" target="_blank" rel="noopener" aria-label="GitHub" data-item="footer-i2">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
         <span data-k="footer.4">GitHub</span>
       </a>
-      <a class="social" id="emailLink" href="mailto:syedshamoon82@gmail.com" data-email="syedshamoon82@gmail.com" aria-label="Email">
+      <a class="social" id="emailLink" href="mailto:syedshamoon82@gmail.com" data-email="syedshamoon82@gmail.com" aria-label="Email" data-item="footer-i3">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>
         <span data-k="footer.5">Email</span>
       </a>

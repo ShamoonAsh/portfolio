@@ -137,10 +137,152 @@ function cmsApplyDefaultTheme(def) {
   if (theme === "light" || theme === "dark") setTheme(theme);
 }
 
+// --- layout: reorder / remove / duplicate repeatable items ------------------
+// Repeatable containers carry data-list="<id>", their children data-item="<id>".
+// Saved layout = { lists: { listId: [itemId, ...] }, clones: { newId: { from } } }.
+// A duplicated item ("clone") is built from a pristine copy of the original
+// it was made from; every key/list/item id inside it is prefixed "<newId>~"
+// so its text can be edited independently.
+const CMS_LINK_RE = /^(https?:\/\/[^\s"'<>]{1,490}|mailto:[^\s"'<>]{1,200}|tel:[0-9+()\- ]{3,30}|#[A-Za-z0-9_-]{1,80}|\/[^\s"'<>]{0,300})$/;
+const cmsBase = (id) => String(id).slice(String(id).lastIndexOf("~") + 1);
+const cmsPrefix = (id) => {
+  const i = String(id).lastIndexOf("~");
+  return i < 0 ? "" : String(id).slice(0, i);
+};
+const cmsSel = (attr, v) => "[" + attr + '="' + String(v).replace(/["\\]/g, "") + '"]';
+const cmsItemsOf = (list) => Array.prototype.filter.call(list.children, (c) => c.hasAttribute("data-item"));
+
+// Pristine copies of every item and the original order of every list, taken
+// now, before anything (saved layout, logos, animations) touches the page.
+const cmsTemplates = {};
+const cmsOriginalOrder = {};
+document.querySelectorAll("[data-item]").forEach((el) => {
+  cmsTemplates[el.getAttribute("data-item")] = el.cloneNode(true);
+});
+document.querySelectorAll("[data-list]").forEach((list) => {
+  cmsOriginalOrder[list.getAttribute("data-list")] = cmsItemsOf(list).map((el) => el.getAttribute("data-item"));
+});
+
+function cmsDefaultOrder(listId) {
+  const p = cmsPrefix(listId);
+  return (cmsOriginalOrder[cmsBase(listId)] || []).map((id) => (p ? p + "~" + id : id));
+}
+
+function cmsBuildItem(id, clones) {
+  let tplId = id;
+  let prefix = "";
+  if (clones && Object.prototype.hasOwnProperty.call(clones, id)) {
+    tplId = clones[id] && clones[id].from;
+    prefix = id;
+  } else if (id.indexOf("~") >= 0) {
+    prefix = cmsPrefix(id); // an original that lives inside a duplicated item
+    tplId = cmsBase(id);
+  }
+  const tpl = cmsTemplates[tplId];
+  if (!tpl) return null;
+  const el = tpl.cloneNode(true);
+  if (prefix) {
+    const remap = (v) => prefix + "~" + cmsBase(v);
+    const all = [el].concat(Array.prototype.slice.call(el.querySelectorAll("*")));
+    all.forEach((n) => {
+      ["data-k", "data-list", "data-item"].forEach((a) => {
+        if (n.hasAttribute(a)) n.setAttribute(a, remap(n.getAttribute(a)));
+      });
+      if (n.id) n.id = n.id + "-" + prefix; // keep ids unique (a duplicated section's anchor)
+      if (n.hasAttribute("for")) n.setAttribute("for", n.getAttribute("for") + "-" + prefix);
+    });
+  }
+  el.setAttribute("data-item", id);
+  // new elements missed the load-time passes (scroll reveal, tech logos)
+  [el].concat(Array.prototype.slice.call(el.querySelectorAll(".reveal"))).forEach((n) => {
+    if (n.classList.contains("reveal")) n.classList.add("in");
+  });
+  if (typeof decorateTag === "function") {
+    if (el.matches(".tags span")) decorateTag(el);
+    el.querySelectorAll(".tags span").forEach(decorateTag);
+  }
+  return el;
+}
+
+// full: lists the layout doesn't mention go back to their original order
+// (the editor uses this; visitors only need the lists that were changed).
+function cmsApplyLayout(layout, opts) {
+  const lists = (layout && layout.lists) || {};
+  const clones = (layout && layout.clones) || {};
+  const full = Boolean(opts && opts.full);
+  const done = typeof WeakSet === "function" ? new WeakSet() : null;
+  if (!done) return;
+
+  // outer lists first; lists inside newly built items show up on the next pass
+  for (let pass = 0; pass < 8; pass++) {
+    let processed = 0;
+    document.querySelectorAll("[data-list]").forEach((list) => {
+      if (done.has(list) || !list.isConnected) return;
+      done.add(list);
+      processed++;
+      const id = list.getAttribute("data-list");
+      const want = Object.prototype.hasOwnProperty.call(lists, id) ? lists[id] : full ? cmsDefaultOrder(id) : null;
+      if (!Array.isArray(want)) return;
+
+      const have = {};
+      cmsItemsOf(list).forEach((el) => (have[el.getAttribute("data-item")] = el));
+      const next = [];
+      const seen = {};
+      want.forEach((itemId) => {
+        if (typeof itemId !== "string" || seen[itemId]) return;
+        seen[itemId] = 1;
+        const el = have[itemId] || cmsBuildItem(itemId, clones);
+        if (el) next.push(el);
+      });
+
+      const cur = cmsItemsOf(list);
+      if (cur.length === next.length && cur.every((el, i) => el === next[i])) return;
+      while (list.firstChild) list.removeChild(list.firstChild);
+      next.forEach((el) => list.appendChild(el));
+    });
+    if (!processed) break;
+  }
+  cmsFixProjectGrid();
+}
+
+// Projects sit two-up between full-width featured cards. When a run has an
+// odd count (after adding/removing projects), the last one goes full width
+// instead of leaving a hole beside it.
+function cmsFixProjectGrid() {
+  document.querySelectorAll(".projects").forEach((grid) => {
+    let run = [];
+    const flush = () => {
+      if (run.length % 2 === 1) run[run.length - 1].classList.add("project-full");
+      run = [];
+    };
+    Array.prototype.forEach.call(grid.children, (card) => {
+      card.classList.remove("project-full");
+      if (!card.classList.contains("project")) return;
+      if (card.classList.contains("project-featured")) flush();
+      else run.push(card);
+    });
+    flush();
+  });
+}
+cmsFixProjectGrid();
+
+function cmsApplyLinks(links) {
+  const map = links || {};
+  Object.keys(map).forEach((k) => {
+    const v = map[k];
+    if (typeof v !== "string" || !CMS_LINK_RE.test(v)) return;
+    const el = document.querySelector(cmsSel("data-k", k));
+    const a = el && el.closest("a");
+    if (a) a.setAttribute("href", v);
+  });
+}
+
 function cmsApply(data) {
   if (!data || typeof data !== "object") return;
   cmsApplyColors(data.colors);
+  cmsApplyLayout(data.layout);
   cmsApplyText(data.text);
+  cmsApplyLinks(data.links);
   cmsApplyDefaultTheme(data.defaultTheme);
 }
 
@@ -151,6 +293,13 @@ window.__cms = {
   get: cmsGet,
   set: cmsSet,
   applyColors: cmsApplyColors,
+  applyLayout: cmsApplyLayout,
+  buildItem: cmsBuildItem,
+  defaultOrder: cmsDefaultOrder,
+  itemsOf: cmsItemsOf,
+  base: cmsBase,
+  prefix: cmsPrefix,
+  linkRe: CMS_LINK_RE,
   setTheme: (t) => setTheme(t),
   currentTheme,
 };
