@@ -1424,7 +1424,9 @@
     $("tab-text").hidden = name !== "text";
     $("tab-colors").hidden = name !== "colors";
     $("tab-resume").hidden = name !== "resume";
+    $("tab-share").hidden = name !== "share";
     if (name === "resume") loadResume();
+    if (name === "share") openShareTab();
   }
   document.querySelector(".tabs").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tab]");
@@ -1539,6 +1541,326 @@
   });
 
   // ------------------------------------------------------------------
+  // share banner (link preview image)
+  // ------------------------------------------------------------------
+  // Drawn on a canvas from what the preview currently shows: theme colours,
+  // logo letter, hero headline, location and services. Uploaded on every
+  // save; /api/og serves it to WhatsApp, LinkedIn & co.
+  const OG_W = 1200;
+  const OG_H = 630;
+
+  function frameText(selector) {
+    if (!doc) return "";
+    const el = doc.querySelector(selector);
+    return el ? htmlToText(cms.get(el)).replace(/\s+/g, " ").trim() : "";
+  }
+
+  // the public address, from the page's canonical link (correct even when
+  // the editor runs on a preview or local URL)
+  function siteHost() {
+    const link = doc && doc.querySelector('link[rel="canonical"]');
+    try {
+      return new URL(link.getAttribute("href")).host;
+    } catch (e) {
+      return location.host;
+    }
+  }
+
+  function shareData() {
+    const mode = state.draft.defaultTheme === "light" ? "light" : "dark";
+    const c = (t) => colorValue(mode, t);
+    const role = Array.from(doc.querySelectorAll(".hero-title [data-k]"))
+      .map((el) => htmlToText(cms.get(el)).trim())
+      .filter(Boolean)
+      .join(" ");
+    const services = Array.from(doc.querySelectorAll(".hero-services [data-item] .lbl"))
+      .map((el) => htmlToText(cms.get(el)).trim())
+      .filter(Boolean);
+    return {
+      mode,
+      bg: c("--bg"),
+      accent: c("--accent"),
+      onAccent: c("--on-accent"),
+      soft: c("--accent-soft"),
+      grad: [c("--grad-1"), c("--grad-2"), c("--grad-3"), c("--grad-4")],
+      name: (doc.title || "").split(",")[0].trim() || "Portfolio",
+      letter: (frameText(".nav .brand-mark") || "S").slice(0, 2),
+      eyebrow: frameText(".hero .eyebrow"),
+      role: role || frameText(".hero-side-title"),
+      location: frameText(".hero-meta [data-k]"),
+      services,
+      domain: siteHost(),
+    };
+  }
+
+  function rrect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function withAlpha(hex, a) {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+  }
+  function mixWhite(hex, amount) {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const m = (v) => Math.round(v + (255 - v) * amount);
+    return "#" + [m(r), m(g), m(b)].map((v) => v.toString(16).padStart(2, "0")).join("");
+  }
+
+  // greedy word wrap; returns lines, or null if it needs more than maxLines
+  function wrap(ctx, text, maxWidth, maxLines) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines = [];
+    let line = "";
+    for (const w of words) {
+      const next = line ? line + " " + w : w;
+      if (ctx.measureText(next).width <= maxWidth || !line) line = next;
+      else {
+        lines.push(line);
+        line = w;
+      }
+    }
+    if (line) lines.push(line);
+    return lines.length <= maxLines && lines.every((l) => ctx.measureText(l).width <= maxWidth) ? lines : null;
+  }
+
+  async function drawShareBanner() {
+    const d = shareData();
+    try {
+      await Promise.all([
+        document.fonts.load('700 100px "Poppins"'),
+        document.fonts.load('600 30px "Poppins"'),
+        document.fonts.load('500 24px "Poppins"'),
+        document.fonts.load('500 22px "Inter"'),
+      ]);
+    } catch (e) {
+      /* falls back to the system sans-serif */
+    }
+    const P = '"Poppins", "Segoe UI", sans-serif';
+    const I = '"Inter", "Segoe UI", sans-serif';
+
+    const canvas = document.createElement("canvas");
+    canvas.width = OG_W;
+    canvas.height = OG_H;
+    const ctx = canvas.getContext("2d");
+    const spacing = (px) => {
+      if ("letterSpacing" in ctx) ctx.letterSpacing = px + "px";
+    };
+
+    // page background, then the hero card
+    ctx.fillStyle = d.bg;
+    ctx.fillRect(0, 0, OG_W, OG_H);
+    const M = 28;
+    const cw = OG_W - M * 2;
+    const ch = OG_H - M * 2;
+    rrect(ctx, M, M, cw, ch, 36);
+    ctx.save();
+    ctx.clip();
+
+    // 155deg linear gradient, like the site's --grad
+    const a = (155 * Math.PI) / 180;
+    const dx = Math.sin(a);
+    const dy = -Math.cos(a);
+    const len = Math.abs(cw * dx) + Math.abs(ch * dy);
+    const cx = M + cw / 2;
+    const cy = M + ch / 2;
+    const g = ctx.createLinearGradient(cx - (dx * len) / 2, cy - (dy * len) / 2, cx + (dx * len) / 2, cy + (dy * len) / 2);
+    [0, 0.3, 0.62, 1].forEach((stop, i) => g.addColorStop(stop, d.grad[i]));
+    ctx.fillStyle = g;
+    ctx.fillRect(M, M, cw, ch);
+
+    // light from the top-left, shadow massing to the bottom-right (hero-tint)
+    const glow = (x, y, r, color) => {
+      const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+      rg.addColorStop(0, color);
+      rg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = rg;
+      ctx.fillRect(M, M, cw, ch);
+    };
+    glow(M + cw * 0.14, M + ch * 0.06, cw * 0.62, withAlpha(mixWhite(d.soft, 0.45), 0.3));
+    glow(M + cw * 1.05, M + ch * 1.0, cw * 0.75, "rgba(0,0,0,0.7)");
+    glow(M + cw * 0.99, M + ch * 0.04, cw * 0.5, "rgba(0,0,0,0.35)");
+    ctx.restore();
+
+    const X = M + 64;
+    const RIGHT = M + cw - 64;
+
+    // brand: mark + name
+    rrect(ctx, X, M + 56, 64, 64, 18);
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.fill();
+    ctx.fillStyle = d.grad[3];
+    ctx.font = "700 " + (d.letter.length > 1 ? 26 : 34) + "px " + P;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    spacing(0);
+    ctx.fillText(d.letter, X + 32, M + 56 + 34);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "600 30px " + P;
+    spacing(-0.6);
+    ctx.fillText(d.name, X + 84, M + 56 + 33);
+
+    // location pill, top-right
+    if (d.location) {
+      ctx.font = "500 21px " + I;
+      spacing(0);
+      const tw = ctx.measureText(d.location).width;
+      const pw = tw + 64;
+      const px = RIGHT - pw;
+      const py = M + 64;
+      rrect(ctx, px, py, pw, 48, 24);
+      ctx.fillStyle = "rgba(0,0,0,0.22)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.28)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px + 26, py + 24, 6, 0, Math.PI * 2);
+      ctx.fillStyle = "#7dff9b";
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillText(d.location, px + 42, py + 25);
+    }
+
+    // eyebrow + headline, fitted to at most two lines
+    const maxW = cw - 128;
+    let size = 112;
+    let lines = null;
+    for (; size >= 56; size -= 4) {
+      ctx.font = "700 " + size + "px " + P;
+      spacing(-size * 0.04);
+      lines = wrap(ctx, d.role, maxW, 2);
+      if (lines) break;
+    }
+    if (!lines) lines = [d.role];
+    const lineH = size * 0.98;
+    // (text is drawn with a middle baseline) keep descenders clear of the divider
+    const bottomOfHeadline = M + ch - 96 - size * 0.62;
+    let y = bottomOfHeadline - lineH * (lines.length - 1);
+
+    if (d.eyebrow) {
+      ctx.font = "500 28px " + P;
+      spacing(-0.4);
+      ctx.fillStyle = "rgba(255,255,255,0.86)";
+      ctx.fillText(d.eyebrow, X + 4, y - size * 0.86 - 10);
+    }
+    ctx.font = "700 " + size + "px " + P;
+    spacing(-size * 0.04);
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 14;
+    lines.forEach((l, i) => ctx.fillText(l, X, y + i * lineH));
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // divider + services + domain pill
+    const lineY = M + ch - 96;
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    ctx.fillRect(M, lineY, cw, 1.5);
+
+    ctx.font = "600 21px " + I;
+    spacing(0);
+    const domainText = d.domain + "  ↗";
+    const dw = ctx.measureText(domainText).width + 40;
+    const dh = 46;
+    const dyPos = lineY + (OG_H - M - lineY - dh) / 2;
+    rrect(ctx, RIGHT - dw, dyPos, dw, dh, 23);
+    ctx.fillStyle = d.accent;
+    ctx.fill();
+    ctx.fillStyle = d.onAccent;
+    ctx.fillText(domainText, RIGHT - dw + 20, dyPos + dh / 2 + 1);
+
+    ctx.font = "500 23px " + P;
+    spacing(-0.3);
+    ctx.fillStyle = "#ffffff";
+    const room = RIGHT - dw - 40 - X;
+    let sx = X;
+    for (const s of d.services) {
+      const w = ctx.measureText(s).width;
+      if (sx + w > X + room) break;
+      if (sx > X) {
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.fillText("·", sx - 22, dyPos + dh / 2 + 1);
+        ctx.fillStyle = "#ffffff";
+      }
+      ctx.fillText(s, sx, dyPos + dh / 2 + 1);
+      sx += w + 44;
+    }
+
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", 0.9));
+  }
+
+  let shareUrl = null;
+  async function renderSharePreview() {
+    if (!cms) return null;
+    const blob = await drawShareBanner();
+    if (!blob) return null;
+    if (shareUrl) URL.revokeObjectURL(shareUrl);
+    shareUrl = URL.createObjectURL(blob);
+    $("shareImg").src = shareUrl;
+    return blob;
+  }
+
+  async function openShareTab() {
+    const meta = (n) => {
+      const el = doc && doc.querySelector('meta[property="' + n + '"]');
+      return el ? el.getAttribute("content") : "";
+    };
+    $("shareDomain").textContent = siteHost();
+    $("shareTitle").textContent = meta("og:title");
+    $("shareDesc").textContent = meta("og:description");
+    renderSharePreview();
+    try {
+      const res = await api("/api/admin/share");
+      $("shareStatus").textContent = res.banner
+        ? "Live banner last updated " + new Date(res.banner.updatedAt).toLocaleString() + ". The preview above shows your unsaved edits too."
+        : "No banner published yet; links show the default banner until you save or publish.";
+    } catch (e) {
+      $("shareStatus").textContent = "";
+    }
+  }
+
+  const blobToBase64 = (blob) =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ""));
+      r.onerror = () => reject(new Error("Couldn't read the banner image."));
+      r.readAsDataURL(blob);
+    });
+
+  async function publishShareBanner(opts) {
+    if (!cms) return;
+    const quiet = opts && opts.quiet;
+    try {
+      const blob = await drawShareBanner();
+      if (!blob) throw new Error("Couldn't draw the banner.");
+      const res = await api("/api/admin/share", { method: "PUT", body: { dataBase64: await blobToBase64(blob) } });
+      if (!$("tab-share").hidden) {
+        $("shareStatus").textContent = "Live banner last updated " + new Date(res.banner.updatedAt).toLocaleString() + ".";
+        renderSharePreview();
+      }
+      if (!quiet) toast("Share banner published.");
+    } catch (e) {
+      if (e.status === 401) showLogin({ overlay: true, message: "Your session expired. Sign in again." });
+      else toast((quiet ? "Saved, but the share banner didn't update: " : "") + e.message, "error");
+    }
+  }
+
+  $("sharePublish").addEventListener("click", () => {
+    if (changeCount() > 0 && !confirm("This publishes the banner with your unsaved edits (colours/text) in it, before you've saved them. Continue?")) return;
+    publishShareBanner();
+  });
+
+  // ------------------------------------------------------------------
   // save / discard
   // ------------------------------------------------------------------
   async function save() {
@@ -1562,6 +1884,8 @@
         renderAllPanels();
       }
       toast("Saved. Visitors will see it within about a minute.");
+      // the link-preview banner follows the saved colours and hero text
+      publishShareBanner({ quiet: true });
     } catch (e) {
       if (e.status === 401) {
         showLogin({ overlay: true, message: "Your session expired. Sign in again to save. Your edits are kept." });

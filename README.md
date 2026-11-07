@@ -68,6 +68,13 @@ except the form, which needs the function running.
 - **Resume**: upload a PDF; the **Download Resume** button (`/api/resume`)
   serves it. With no upload, it serves `SYED_SHAMOON_ASHRAF_RESUME.pdf` from
   the repo.
+- **Share**: the link-preview banner (WhatsApp, Instagram, LinkedIn, X…).
+  Crawlers don't run JavaScript and most need JPEG/PNG, so the editor draws a
+  1200×630 JPEG on a canvas (theme colours, logo letter, hero headline,
+  location, services) and uploads it on every save; `og:image` points at
+  `/api/og`, which serves it, falling back to `og-default.jpg`. The `og:` /
+  `twitter:` tags in `index.html` hard-code the production URL; update them if
+  the domain changes.
 
 Edits (and the uploaded resume) are stored in Upstash Redis and applied by
 `script.js` on page load. If Redis is unreachable the page shows what

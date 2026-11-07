@@ -610,6 +610,29 @@ kbd {
 .dz-icon svg { width: 100%; height: 100%; }
 .dz-title { font-weight: 600; }
 
+/* ---- share tab ---- */
+.share-intro { margin: 0 0 14px; }
+.share-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel-2);
+}
+.share-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1200 / 630;
+  background: var(--line);
+}
+.share-meta { display: grid; gap: 2px; padding: 10px 12px 12px; }
+.share-domain { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.share-title { font-size: 14px; }
+.share-desc { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+#shareStatus { margin: 8px 0 12px; }
+.share-tip { margin-top: 16px; }
+.share-tip code { font-size: 11.5px; word-break: break-all; }
+
 /* ============ TOAST ============ */
 .toast {
   position: fixed;

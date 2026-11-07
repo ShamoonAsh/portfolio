@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/og.js": { "includeFiles": "og-default.jpg" }
+  },
   "headers": [
     {
       "source": "/admin(.*)",
