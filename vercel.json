@@ -1,0 +1,26 @@
+{
+  "headers": [
+    {
+      "source": "/admin(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "same-origin" },
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/SYED_SHAMOON_ASHRAF_RESUME.pdf",
+      "headers": [
+        { "key": "Content-Disposition", "value": "attachment; filename=\"Syed-Shamoon-Ashraf-Resume.pdf\"" }
+      ]
+    },
+    {
+      "source": "/((?!admin).*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
+}

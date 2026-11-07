@@ -9,6 +9,26 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script>
+/* Runs before first paint. 1) Restores the visitor's own theme choice so the
+   page never flashes the wrong theme. 2) Starts fetching the text/colour
+   edits saved in /admin while the CSS and fonts load; script.js applies them.
+   The page stays hidden until they arrive, capped at 1.5s so a slow or
+   unreachable API only ever costs a short delay, never a blank page. */
+(function () {
+  var d = document.documentElement;
+  try {
+    var t = localStorage.getItem("theme");
+    if (t === "light" || t === "dark") { d.setAttribute("data-theme", t); d.setAttribute("data-theme-source", "user"); }
+  } catch (e) {}
+  if (/[?&]cms=edit\b/.test(location.search) || !window.fetch) return;
+  d.classList.add("cms-pending");
+  window.__cmsContent = fetch("/api/content", { headers: { Accept: "application/json" } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .catch(function () { return null; });
+  setTimeout(function () { d.classList.remove("cms-pending"); }, 1500);
+})();
+</script>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -43,21 +63,25 @@
 <header class="nav" id="nav">
   <div class="shell nav-inner">
     <a class="brand" href="#top">
-      <span class="brand-mark">S</span>
-      <span class="brand-text">Shamoon</span>
+      <span class="brand-mark" data-k="nav.1">S</span>
+      <span class="brand-text" data-k="nav.2">Shamoon</span>
     </a>
 
     <nav class="nav-links" id="navLinks">
-      <a href="#top">Home</a>
-      <a href="#about">About</a>
-      <a href="#projects">Projects</a>
-      <a href="#experience">Experience</a>
-      <a href="#skills">Skills</a>
+      <a href="#top" data-k="nav.3">Home</a>
+      <a href="#about" data-k="nav.4">About</a>
+      <a href="#projects" data-k="nav.5">Projects</a>
+      <a href="#experience" data-k="nav.6">Experience</a>
+      <a href="#skills" data-k="nav.7">Skills</a>
     </nav>
 
     <div class="nav-actions">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light theme" title="Switch to light theme">
+        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.4A8.5 8.5 0 0 1 9.6 3.5a8.5 8.5 0 1 0 10.9 10.9Z"/></svg>
+      </button>
       <a class="btn btn-primary" href="#contact">
-        Get in touch
+        <span data-k="nav.8">Get in touch</span>
         <span class="btn-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 18 18 6M18 6H9M18 6v9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
@@ -78,73 +102,73 @@
 
       <div class="hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">Hey, I'm a</p>
-          <h1 class="hero-title"><span>Computer</span><span>Science</span><span>Graduate</span></h1>
+          <p class="eyebrow" data-k="hero.1">Hey, I'm a</p>
+          <h1 class="hero-title"><span data-k="hero.2">Computer</span><span data-k="hero.3">Science</span><span data-k="hero.4">Graduate</span></h1>
         </div>
 
         <div class="hero-side">
-          <p class="hero-side-title">Great software should feel invisible.</p>
-          <p class="hero-side-text">
+          <p class="hero-side-title" data-k="hero.5">Great software should feel invisible.</p>
+          <p class="hero-side-text" data-k="hero.6">
             I build .NET and Dynamics 365 solutions that quietly do the heavy
             lifting, cleaner data, fewer clicks, real results.
           </p>
           <div class="hero-meta">
             <span class="dot" aria-hidden="true"></span>
-            Karachi, Pakistan &middot; Open to opportunities
+            <span data-k="hero.7">Karachi, Pakistan &middot; Open to opportunities</span>
           </div>
         </div>
       </div>
 
       <ul class="hero-services">
-        <li><span class="num">01</span><span class="lbl">.NET Development</span></li>
-        <li><span class="num">02</span><span class="lbl">Dynamics 365 F&amp;O</span></li>
-        <li><span class="num">03</span><span class="lbl">SQL &amp; Databases</span></li>
-        <li><span class="num">04</span><span class="lbl">AI Automation</span></li>
+        <li><span class="num" data-k="hero.8">01</span><span class="lbl" data-k="hero.9">.NET Development</span></li>
+        <li><span class="num" data-k="hero.10">02</span><span class="lbl" data-k="hero.11">Dynamics 365 F&amp;O</span></li>
+        <li><span class="num" data-k="hero.12">03</span><span class="lbl" data-k="hero.13">SQL &amp; Databases</span></li>
+        <li><span class="num" data-k="hero.14">04</span><span class="lbl" data-k="hero.15">AI Automation</span></li>
       </ul>
     </div>
 
     <!-- tech strip -->
     <div class="strip reveal">
-      <p class="strip-label">Tools I build with every day</p>
+      <p class="strip-label" data-k="hero.16">Tools I build with every day</p>
       <div class="strip-set">
-        <span class="chip">C#</span>
-        <span class="chip">.NET / MVC</span>
-        <span class="chip">SQL Server</span>
-        <span class="chip">Dynamics 365</span>
-        <span class="chip">X++</span>
-        <span class="chip">Power Platform</span>
-        <span class="chip">Python</span>
-        <span class="chip">REST APIs</span>
+        <span class="chip" data-k="hero.17">C#</span>
+        <span class="chip" data-k="hero.18">.NET / MVC</span>
+        <span class="chip" data-k="hero.19">SQL Server</span>
+        <span class="chip" data-k="hero.20">Dynamics 365</span>
+        <span class="chip" data-k="hero.21">X++</span>
+        <span class="chip" data-k="hero.22">Power Platform</span>
+        <span class="chip" data-k="hero.23">Python</span>
+        <span class="chip" data-k="hero.24">REST APIs</span>
       </div>
     </div>
   </section>
 
   <!-- ============ ABOUT ============ -->
   <section class="section shell" id="about">
-    <p class="kicker reveal">Behind the Code</p>
+    <p class="kicker reveal" data-k="about.1">Behind the Code</p>
     <div class="about-grid">
-      <h2 class="display reveal">Building systems<br />that make work<br />simpler</h2>
+      <h2 class="display reveal" data-k="about.2">Building systems<br />that make work<br />simpler</h2>
       <div class="about-right reveal">
-        <p>
+        <p data-k="about.3">
           I'm <strong>Syed Shamoon Ashraf</strong>, a Computer Science graduate from
           DHA Suffa University. I work mostly inside the Microsoft stack, C#, .NET,
           SQL Server and Dynamics 365 Finance &amp; Operations, and I like the kind
           of problem where a stored procedure or a well-placed automation saves
           someone an hour a day.
         </p>
-        <p>
+        <p data-k="about.4">
           Alongside that I build with Python: chatbots on the WhatsApp Cloud API and
           an AI email assistant that drafts replies but never sends without approval.
           Currently gaining hands-on D365 F&amp;O experience at Hull Technologies.
         </p>
         <div class="about-cta">
           <a class="btn btn-primary" href="#contact">
-            Let's build something
+            <span data-k="about.5">Let's build something</span>
             <span class="btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none"><path d="M6 18 18 6M18 6H9M18 6v9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </span>
           </a>
-          <a class="btn btn-ghost" href="/SYED_SHAMOON_ASHRAF_RESUME.pdf" download="Syed-Shamoon-Ashraf-Resume.pdf">Download Resume</a>
+          <a class="btn btn-ghost" href="/api/resume" download="Syed-Shamoon-Ashraf-Resume.pdf" data-k="about.6">Download Resume</a>
         </div>
       </div>
     </div>
@@ -155,157 +179,157 @@
   <section class="section shell" id="projects">
     <div class="section-head">
       <div>
-        <p class="kicker reveal">Selected Work</p>
-        <h2 class="display reveal">Projects</h2>
+        <p class="kicker reveal" data-k="projects.1">Selected Work</p>
+        <h2 class="display reveal" data-k="projects.2">Projects</h2>
       </div>
-      <p class="section-note reveal">Things I built to learn something new, and then kept improving.</p>
+      <p class="section-note reveal" data-k="projects.3">Things I built to learn something new, and then kept improving.</p>
     </div>
 
     <div class="projects">
       <article class="project project-featured reveal">
         <div class="project-top">
-          <span class="project-num">01</span>
+          <span class="project-num" data-k="projects.4">01</span>
           <div class="project-top-right">
-            <span class="project-flag">Final Year Project</span>
-            <span class="project-date">10/2025 - 07/2026</span>
+            <span class="project-flag" data-k="projects.5">Final Year Project</span>
+            <span class="project-date" data-k="projects.6">10/2025 - 07/2026</span>
           </div>
         </div>
-        <h3>EhsaasPay</h3>
-        <p class="project-lede">
+        <h3 data-k="projects.7">EhsaasPay</h3>
+        <p class="project-lede" data-k="projects.8">
           A Flutter charity and donation platform that verifies every request before
           donors ever see it, identity checks, an approval workflow and card payments
           end to end.
         </p>
         <ul class="project-points">
-          <li>CNIC-based sign-up with phone OTP, plus a 4-digit MPIN gate on every donation.</li>
-          <li>On-device OCR (Google ML Kit) reads the CNIC and supporting documents to verify a request.</li>
-          <li>Stripe test-mode card payments, push notifications and an admin approval workflow.</li>
-          <li>Standalone web admin panel for reviewing requests and tracking organisation stats.</li>
+          <li data-k="projects.9">CNIC-based sign-up with phone OTP, plus a 4-digit MPIN gate on every donation.</li>
+          <li data-k="projects.10">On-device OCR (Google ML Kit) reads the CNIC and supporting documents to verify a request.</li>
+          <li data-k="projects.11">Stripe test-mode card payments, push notifications and an admin approval workflow.</li>
+          <li data-k="projects.12">Standalone web admin panel for reviewing requests and tracking organisation stats.</li>
         </ul>
         <div class="tags">
-          <span>Flutter</span><span>Firebase Auth</span><span>Firestore</span><span>Stripe</span><span>Google ML Kit</span>
+          <span data-k="projects.13">Flutter</span><span data-k="projects.14">Firebase Auth</span><span data-k="projects.15">Firestore</span><span data-k="projects.16">Stripe</span><span data-k="projects.17">Google ML Kit</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/EhsaasPay" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
-          <span>View on GitHub</span>
+          <span data-k="projects.18">View on GitHub</span>
         </a>
       </article>
 
       <article class="project project-featured reveal">
         <div class="project-top">
-          <span class="project-num">02</span>
-          <span class="project-date">07/2026</span>
+          <span class="project-num" data-k="projects.19">02</span>
+          <span class="project-date" data-k="projects.20">07/2026</span>
         </div>
-        <h3>Crochet E-Commerce Store</h3>
-        <p class="project-lede">
+        <h3 data-k="projects.21">Crochet E-Commerce Store</h3>
+        <p class="project-lede" data-k="projects.22">
           A full storefront for handmade crochet products, browsing and checkout on
           the front, and a complete admin back office behind it.
         </p>
         <ul class="project-points">
-          <li>Shop, product and category pages with cart, wishlist and order tracking.</li>
-          <li>Stripe checkout confirmed by a webhook route, with coupon and discount support.</li>
-          <li>Admin panel for products, orders, customers, coupons, reviews, blog and custom requests.</li>
-          <li>Supabase Postgres schema plus a custom-order request flow and transactional email.</li>
+          <li data-k="projects.23">Shop, product and category pages with cart, wishlist and order tracking.</li>
+          <li data-k="projects.24">Stripe checkout confirmed by a webhook route, with coupon and discount support.</li>
+          <li data-k="projects.25">Admin panel for products, orders, customers, coupons, reviews, blog and custom requests.</li>
+          <li data-k="projects.26">Supabase Postgres schema plus a custom-order request flow and transactional email.</li>
         </ul>
         <div class="tags">
-          <span>Next.js</span><span>TypeScript</span><span>Supabase</span><span>Stripe</span><span>Tailwind CSS</span>
+          <span data-k="projects.27">Next.js</span><span data-k="projects.28">TypeScript</span><span data-k="projects.29">Supabase</span><span data-k="projects.30">Stripe</span><span data-k="projects.31">Tailwind CSS</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/ecommerce-crochet-website" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
-          <span>View on GitHub</span>
+          <span data-k="projects.32">View on GitHub</span>
         </a>
       </article>
 
       <article class="project reveal">
         <div class="project-top">
-          <span class="project-num">03</span>
-          <span class="project-date">07/2026</span>
+          <span class="project-num" data-k="projects.33">03</span>
+          <span class="project-date" data-k="projects.34">07/2026</span>
         </div>
-        <h3>AI Email Assistant</h3>
-        <p class="project-lede">
+        <h3 data-k="projects.35">AI Email Assistant</h3>
+        <p class="project-lede" data-k="projects.36">
           An AI-powered assistant that reads incoming email, understands intent and
           drafts an intelligent reply.
         </p>
         <ul class="project-points">
-          <li>Extracts key context from each thread and writes a personalised response.</li>
-          <li>Nothing is sent until the user approves it, accuracy and full control.</li>
+          <li data-k="projects.37">Extracts key context from each thread and writes a personalised response.</li>
+          <li data-k="projects.38">Nothing is sent until the user approves it, accuracy and full control.</li>
         </ul>
         <div class="tags">
-          <span>Python</span><span>Gmail API</span><span>Gemini API</span><span>Streamlit</span>
+          <span data-k="projects.39">Python</span><span data-k="projects.40">Gmail API</span><span data-k="projects.41">Gemini API</span><span data-k="projects.42">Streamlit</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/EmailAssistant" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
-          <span>View on GitHub</span>
+          <span data-k="projects.43">View on GitHub</span>
         </a>
       </article>
 
       <article class="project reveal">
         <div class="project-top">
-          <span class="project-num">04</span>
-          <span class="project-date">08/2025 - 09/2025</span>
+          <span class="project-num" data-k="projects.44">04</span>
+          <span class="project-date" data-k="projects.45">08/2025 - 09/2025</span>
         </div>
-        <h3>AI-Powered WhatsApp Bot Using Meta API</h3>
-        <p class="project-lede">
+        <h3 data-k="projects.46">AI-Powered WhatsApp Bot Using Meta API</h3>
+        <p class="project-lede" data-k="projects.47">
           An AI-powered WhatsApp chatbot providing dynamic, context-aware
           responses using Google Gemini.
         </p>
         <ul class="project-points">
-          <li>Built with Python, Meta WhatsApp Cloud API and Google Gemini API.</li>
-          <li>Integrated Gemini for dynamic AI-generated replies.</li>
-          <li>Used Ngrok for webhook integration and local testing.</li>
+          <li data-k="projects.48">Built with Python, Meta WhatsApp Cloud API and Google Gemini API.</li>
+          <li data-k="projects.49">Integrated Gemini for dynamic AI-generated replies.</li>
+          <li data-k="projects.50">Used Ngrok for webhook integration and local testing.</li>
         </ul>
         <div class="tags">
-          <span>Python</span><span>Google Gemini API</span><span>Meta WhatsApp Cloud API</span><span>Ngrok</span>
+          <span data-k="projects.51">Python</span><span data-k="projects.52">Google Gemini API</span><span data-k="projects.53">Meta WhatsApp Cloud API</span><span data-k="projects.54">Ngrok</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/AIPoweredWhatsappBot" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
-          <span>View on GitHub</span>
+          <span data-k="projects.55">View on GitHub</span>
         </a>
       </article>
 
       <article class="project reveal">
         <div class="project-top">
-          <span class="project-num">05</span>
-          <span class="project-date">09/2024</span>
+          <span class="project-num" data-k="projects.56">05</span>
+          <span class="project-date" data-k="projects.57">09/2024</span>
         </div>
-        <h3>Point of Sale System</h3>
-        <p class="project-lede">
+        <h3 data-k="projects.58">Point of Sale System</h3>
+        <p class="project-lede" data-k="projects.59">
           A Windows application handling sales transactions, inventory and customer
           data for retail stores.
         </p>
         <ul class="project-points">
-          <li>Real-time billing, stock updates and reporting against SQL Server.</li>
-          <li>Focused on a clean, user-friendly interface for non-technical staff.</li>
+          <li data-k="projects.60">Real-time billing, stock updates and reporting against SQL Server.</li>
+          <li data-k="projects.61">Focused on a clean, user-friendly interface for non-technical staff.</li>
         </ul>
         <div class="tags">
-          <span>C#</span><span>Visual Studio</span><span>MS SQL Server</span>
+          <span data-k="projects.62">C#</span><span data-k="projects.63">Visual Studio</span><span data-k="projects.64">MS SQL Server</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/Point-of-Sale" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
-          <span>View on GitHub</span>
+          <span data-k="projects.65">View on GitHub</span>
         </a>
       </article>
 
       <article class="project reveal">
         <div class="project-top">
-          <span class="project-num">06</span>
-          <span class="project-date">08/2024</span>
+          <span class="project-num" data-k="projects.66">06</span>
+          <span class="project-date" data-k="projects.67">08/2024</span>
         </div>
-        <h3>Student Management System</h3>
-        <p class="project-lede">
+        <h3 data-k="projects.68">Student Management System</h3>
+        <p class="project-lede" data-k="projects.69">
           A system to manage student records, course enrollments and academics,
           with secure login functionality.
         </p>
         <ul class="project-points">
-          <li>Designed the relational database and set foreign key constraints across students, courses and enrollments.</li>
-          <li>Implemented CRUD operations with input validation behind a secure login.</li>
+          <li data-k="projects.70">Designed the relational database and set foreign key constraints across students, courses and enrollments.</li>
+          <li data-k="projects.71">Implemented CRUD operations with input validation behind a secure login.</li>
         </ul>
         <div class="tags">
-          <span>C#</span><span>Visual Studio</span><span>Microsoft SQL Server</span>
+          <span data-k="projects.72">C#</span><span data-k="projects.73">Visual Studio</span><span data-k="projects.74">Microsoft SQL Server</span>
         </div>
         <a class="project-link" href="https://github.com/ShamoonAsh/Student-Management-and-Enrollnment-System" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
-          <span>View on GitHub</span>
+          <span data-k="projects.75">View on GitHub</span>
         </a>
       </article>
     </div>
@@ -315,66 +339,66 @@
   <section class="section shell" id="experience">
     <div class="section-head">
       <div>
-        <p class="kicker reveal">Where I've Been</p>
-        <h2 class="display reveal">Experience &amp;<br />education</h2>
+        <p class="kicker reveal" data-k="experience.1">Where I've Been</p>
+        <h2 class="display reveal" data-k="experience.2">Experience &amp;<br />education</h2>
       </div>
-      <p class="section-note reveal">Internships, training and the degree behind it all.</p>
+      <p class="section-note reveal" data-k="experience.3">Internships, training and the degree behind it all.</p>
     </div>
 
     <div class="timeline">
       <div class="tl-item reveal">
-        <div class="tl-when">08/2026 - 09/2026</div>
+        <div class="tl-when" data-k="experience.4">08/2026 - 09/2026</div>
         <div class="tl-body">
-          <h3>Software Development Intern</h3>
-          <p class="tl-org">Pakistan Atomic Energy Commission</p>
+          <h3 data-k="experience.5">Software Development Intern</h3>
+          <p class="tl-org" data-k="experience.6">Pakistan Atomic Energy Commission</p>
           <ul>
-            <li>Conducted vulnerability testing, created technical documentation and provided installation guidance for the FPIS project to enhance security and usability.</li>
-            <li>Developed a Paper Ream Management System to streamline A3/A4 paper allocation, manage employee records and facilitate admin approval workflows.</li>
-            <li>Engineered a PDF Document Management System for scanning, uploading and running CRUD operations on documents to organise and manage digital files.</li>
+            <li data-k="experience.7">Conducted vulnerability testing, created technical documentation and provided installation guidance for the FPIS project to enhance security and usability.</li>
+            <li data-k="experience.8">Developed a Paper Ream Management System to streamline A3/A4 paper allocation, manage employee records and facilitate admin approval workflows.</li>
+            <li data-k="experience.9">Engineered a PDF Document Management System for scanning, uploading and running CRUD operations on documents to organise and manage digital files.</li>
           </ul>
         </div>
       </div>
 
       <div class="tl-item reveal">
-        <div class="tl-when">10/2024 - 07/2026</div>
+        <div class="tl-when" data-k="experience.10">10/2024 - 07/2026</div>
         <div class="tl-body">
-          <h3>Microsoft Dynamics 365 FinOps</h3>
-          <p class="tl-org">Hull Technologies</p>
+          <h3 data-k="experience.11">Microsoft Dynamics 365 FinOps</h3>
+          <p class="tl-org" data-k="experience.12">Hull Technologies</p>
           <ul>
-            <li>Gained hands-on experience in Microsoft Dynamics 365 Finance &amp; Operations while working part-time at Hull Technologies alongside university studies, contributing to real-time projects and developing practical skills in D365 F&amp;O development.</li>
+            <li data-k="experience.13">Gained hands-on experience in Microsoft Dynamics 365 Finance &amp; Operations while working part-time at Hull Technologies alongside university studies, contributing to real-time projects and developing practical skills in D365 F&amp;O development.</li>
           </ul>
         </div>
       </div>
 
       <div class="tl-item reveal">
-        <div class="tl-when">08/2025 - 10/2025</div>
+        <div class="tl-when" data-k="experience.14">08/2025 - 10/2025</div>
         <div class="tl-body">
-          <h3>Software Engineering Intern</h3>
-          <p class="tl-org">Orient Energy Systems Pvt Ltd</p>
+          <h3 data-k="experience.15">Software Engineering Intern</h3>
+          <p class="tl-org" data-k="experience.16">Orient Energy Systems Pvt Ltd</p>
           <ul>
-            <li>Worked with the IT development team to customise the company CRM built on MVC .NET, including automated email notifications.</li>
-            <li>Designed and implemented a dynamic salespersons grid with department-wise listing, CRUD operations and search.</li>
-            <li>Developed and optimised SQL stored procedures powering automated weekly and monthly email updates.</li>
+            <li data-k="experience.17">Worked with the IT development team to customise the company CRM built on MVC .NET, including automated email notifications.</li>
+            <li data-k="experience.18">Designed and implemented a dynamic salespersons grid with department-wise listing, CRUD operations and search.</li>
+            <li data-k="experience.19">Developed and optimised SQL stored procedures powering automated weekly and monthly email updates.</li>
           </ul>
         </div>
       </div>
 
       <div class="tl-item reveal">
-        <div class="tl-when">10/2022 - 07/2026</div>
+        <div class="tl-when" data-k="experience.20">10/2022 - 07/2026</div>
         <div class="tl-body">
-          <h3>B.S. Computer Science</h3>
-          <p class="tl-org">DHA Suffa University</p>
+          <h3 data-k="experience.21">B.S. Computer Science</h3>
+          <p class="tl-org" data-k="experience.22">DHA Suffa University</p>
           <ul>
-            <li>Core software engineering, databases and programming fundamentals.</li>
+            <li data-k="experience.23">Core software engineering, databases and programming fundamentals.</li>
           </ul>
         </div>
       </div>
 
       <div class="tl-item reveal">
-        <div class="tl-when">10/2020 - 06/2022</div>
+        <div class="tl-when" data-k="experience.24">10/2020 - 06/2022</div>
         <div class="tl-body">
-          <h3>H.Sc. Pre-Engineering</h3>
-          <p class="tl-org">Adamjee Govt. Science College</p>
+          <h3 data-k="experience.25">H.Sc. Pre-Engineering</h3>
+          <p class="tl-org" data-k="experience.26">Adamjee Govt. Science College</p>
         </div>
       </div>
     </div>
@@ -384,51 +408,51 @@
   <section class="section shell" id="skills">
     <div class="section-head">
       <div>
-        <p class="kicker reveal">Toolkit</p>
-        <h2 class="display reveal">Skills &amp;<br />certifications</h2>
+        <p class="kicker reveal" data-k="skills.1">Toolkit</p>
+        <h2 class="display reveal" data-k="skills.2">Skills &amp;<br />certifications</h2>
       </div>
-      <p class="section-note reveal">The stack I reach for, and the paper that backs it.</p>
+      <p class="section-note reveal" data-k="skills.3">The stack I reach for, and the paper that backs it.</p>
     </div>
 
     <div class="skills-grid reveal">
       <div class="skill-col">
-        <h4>Languages</h4>
-        <ul><li>C#</li><li>X++</li><li>Python</li><li>T-SQL</li></ul>
+        <h4 data-k="skills.4">Languages</h4>
+        <ul><li data-k="skills.5">C#</li><li data-k="skills.6">X++</li><li data-k="skills.7">Python</li><li data-k="skills.8">T-SQL</li></ul>
       </div>
       <div class="skill-col">
-        <h4>Platforms</h4>
-        <ul><li>.NET / MVC</li><li>Dynamics 365 F&amp;O</li><li>Dynamics CRM</li><li>Power Platform</li></ul>
+        <h4 data-k="skills.9">Platforms</h4>
+        <ul><li data-k="skills.10">.NET / MVC</li><li data-k="skills.11">Dynamics 365 F&amp;O</li><li data-k="skills.12">Dynamics CRM</li><li data-k="skills.13">Power Platform</li></ul>
       </div>
       <div class="skill-col">
-        <h4>Data</h4>
-        <ul><li>Microsoft SQL Server</li><li>Stored procedures</li><li>Database design</li><li>Reporting</li></ul>
+        <h4 data-k="skills.14">Data</h4>
+        <ul><li data-k="skills.15">Microsoft SQL Server</li><li data-k="skills.16">Stored procedures</li><li data-k="skills.17">Database design</li><li data-k="skills.18">Reporting</li></ul>
       </div>
       <div class="skill-col">
-        <h4>Other</h4>
-        <ul><li>REST APIs</li><li>ERP workflows</li><li>Visual Studio</li><li>Streamlit</li></ul>
+        <h4 data-k="skills.19">Other</h4>
+        <ul><li data-k="skills.20">REST APIs</li><li data-k="skills.21">ERP workflows</li><li data-k="skills.22">Visual Studio</li><li data-k="skills.23">Streamlit</li></ul>
       </div>
     </div>
 
     <div class="certs">
       <article class="cert reveal">
-        <h4>Databases and SQL for Data Science with Python</h4>
-        <p class="cert-org">IBM &middot; Coursera</p>
-        <p>SQL fundamentals, database design and Python-based data analysis.</p>
+        <h4 data-k="skills.24">Databases and SQL for Data Science with Python</h4>
+        <p class="cert-org" data-k="skills.25">IBM &middot; Coursera</p>
+        <p data-k="skills.26">SQL fundamentals, database design and Python-based data analysis.</p>
       </article>
       <article class="cert reveal">
-        <h4>C# Certification</h4>
-        <p class="cert-org">HackerRank</p>
-        <p>Core object-oriented programming concepts and data structures in C#.</p>
+        <h4 data-k="skills.27">C# Certification</h4>
+        <p class="cert-org" data-k="skills.28">HackerRank</p>
+        <p data-k="skills.29">Core object-oriented programming concepts and data structures in C#.</p>
       </article>
       <article class="cert reveal">
-        <h4>Introduction to AI</h4>
-        <p class="cert-org">Google &middot; Coursera</p>
-        <p>An online course authorized by Google and offered through Coursera.</p>
+        <h4 data-k="skills.30">Introduction to AI</h4>
+        <p class="cert-org" data-k="skills.31">Google &middot; Coursera</p>
+        <p data-k="skills.32">An online course authorized by Google and offered through Coursera.</p>
       </article>
       <article class="cert reveal">
-        <h4>Microsoft Dynamics CRM &amp; Power Platform</h4>
-        <p class="cert-org">Mazik Global &amp; SMIT &middot; 02/2025 - 06/2025</p>
-        <p>Course covering the fundamentals of Microsoft Dynamics CRM and the Power Platform.</p>
+        <h4 data-k="skills.33">Microsoft Dynamics CRM &amp; Power Platform</h4>
+        <p class="cert-org" data-k="skills.34">Mazik Global &amp; SMIT &middot; 02/2025 - 06/2025</p>
+        <p data-k="skills.35">Course covering the fundamentals of Microsoft Dynamics CRM and the Power Platform.</p>
       </article>
     </div>
   </section>
@@ -437,28 +461,28 @@
   <section class="contact shell" id="contact">
     <div class="contact-card reveal">
       <div class="contact-tint" aria-hidden="true"></div>
-      <p class="eyebrow">Let's talk</p>
-      <h2 class="contact-title">Have something<br />to build?</h2>
-      <p class="contact-text">
+      <p class="eyebrow" data-k="contact.1">Let's talk</p>
+      <h2 class="contact-title" data-k="contact.2">Have something<br />to build?</h2>
+      <p class="contact-text" data-k="contact.3">
         I'm open to software engineering and Dynamics 365 roles, internships and
         freelance work. Leave a message below and it lands straight in my inbox.
       </p>
 
       <form class="contact-form" id="contactForm" novalidate>
         <div class="field">
-          <label for="cfName">Name</label>
+          <label for="cfName" data-k="contact.4">Name</label>
           <input id="cfName" name="name" type="text" autocomplete="name" maxlength="80" required placeholder="Your name" />
         </div>
         <div class="field">
-          <label for="cfEmail">Email</label>
+          <label for="cfEmail" data-k="contact.5">Email</label>
           <input id="cfEmail" name="email" type="email" autocomplete="email" maxlength="120" required placeholder="you@company.com" />
         </div>
         <div class="field field-wide">
-          <label for="cfSubject">Subject <span class="opt">(optional)</span></label>
+          <label for="cfSubject"><span data-k="contact.6">Subject</span> <span class="opt" data-k="contact.7">(optional)</span></label>
           <input id="cfSubject" name="subject" type="text" maxlength="120" placeholder="Role, project or just hello" />
         </div>
         <div class="field field-wide">
-          <label for="cfMessage">Message</label>
+          <label for="cfMessage" data-k="contact.8">Message</label>
           <textarea id="cfMessage" name="message" rows="5" maxlength="4000" required placeholder="Tell me a little about what you're building."></textarea>
         </div>
 
@@ -467,7 +491,7 @@
 
         <div class="form-foot">
           <button class="btn btn-dark" type="submit" id="cfSubmit">
-            <span class="cf-label">Send message</span>
+            <span class="cf-label" data-k="contact.9">Send message</span>
             <span class="btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none"><path d="M6 18 18 6M18 6H9M18 6v9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </span>
@@ -483,24 +507,24 @@
 <footer class="footer shell">
   <div class="footer-inner">
     <a class="brand" href="#top">
-      <span class="brand-mark">S</span>
-      <span class="brand-text">Shamoon</span>
+      <span class="brand-mark" data-k="footer.1">S</span>
+      <span class="brand-text" data-k="footer.2">Shamoon</span>
     </a>
     <nav class="footer-links">
       <a class="social" href="https://www.linkedin.com/in/shamoonashraf/" target="_blank" rel="noopener" aria-label="LinkedIn">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM3 9h4v12H3V9Zm7 0h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05C20.9 8.65 22 10.6 22 14v7h-4v-6.2c0-1.55-.55-2.6-1.9-2.6-1.05 0-1.67.7-1.95 1.38-.1.24-.13.58-.13.92V21h-4V9Z"/></svg>
-        <span>LinkedIn</span>
+        <span data-k="footer.3">LinkedIn</span>
       </a>
       <a class="social" href="https://github.com/ShamoonAsh" target="_blank" rel="noopener" aria-label="GitHub">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.59.24 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.79 1.07.79 2.15v3.19c0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
-        <span>GitHub</span>
+        <span data-k="footer.4">GitHub</span>
       </a>
       <a class="social" id="emailLink" href="mailto:syedshamoon82@gmail.com" data-email="syedshamoon82@gmail.com" aria-label="Email">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>
-        <span>Email</span>
+        <span data-k="footer.5">Email</span>
       </a>
     </nav>
-    <p class="footer-note">© <span id="year">2026</span> Syed Shamoon Ashraf, Karachi, Pakistan</p>
+    <p class="footer-note">© <span id="year">2026</span> <span data-k="footer.6">Syed Shamoon Ashraf, Karachi, Pakistan</span></p>
   </div>
 </footer>
 

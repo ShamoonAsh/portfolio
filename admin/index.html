@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Site Editor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%235c86c4'/%3E%3Ctext x='50' y='70' font-family='Arial' font-size='62' font-weight='bold' fill='%230a1120' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<!-- absolute paths: this page is served at /admin (no trailing slash) -->
+<link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+
+<div class="boot" id="boot" aria-live="polite">Loading…</div>
+
+<!-- ============ LOGIN ============ -->
+<section class="login" id="login" hidden>
+  <form class="login-card" id="loginForm" novalidate>
+    <div class="login-mark" aria-hidden="true">S</div>
+    <h1>Site editor</h1>
+    <p class="login-sub" id="loginSub">Sign in to edit your portfolio.</p>
+
+    <div class="notice notice-warn" id="loginConfig" hidden></div>
+
+    <label class="field">
+      <span>Username</span>
+      <input id="loginUser" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+    </label>
+    <label class="field">
+      <span>Password</span>
+      <span class="pw-wrap">
+        <input id="loginPass" name="password" type="password" autocomplete="current-password" required />
+        <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password">Show</button>
+      </span>
+    </label>
+
+    <button class="btn btn-primary btn-block" type="submit" id="loginBtn">Sign in</button>
+    <p class="login-error" id="loginError" role="alert"></p>
+    <a class="login-back" href="/">&larr; Back to the site</a>
+  </form>
+</section>
+
+<!-- ============ EDITOR ============ -->
+<div class="app" id="app" hidden>
+  <header class="topbar">
+    <div class="tb-left">
+      <span class="mark" aria-hidden="true">S</span>
+      <strong class="tb-title">Site editor</strong>
+      <span class="status" id="status" data-state="saved">All changes saved</span>
+    </div>
+
+    <div class="seg" role="group" aria-label="Preview width" id="widthSeg">
+      <button type="button" data-width="desktop" aria-pressed="true">Desktop</button>
+      <button type="button" data-width="mobile" aria-pressed="false">Mobile</button>
+    </div>
+
+    <div class="tb-right">
+      <a class="btn btn-ghost" href="/" target="_blank" rel="noopener">View site</a>
+      <button class="btn btn-ghost" type="button" id="discardBtn" disabled>Discard</button>
+      <button class="btn btn-primary" type="button" id="saveBtn" disabled title="Save (Ctrl+S)">Save</button>
+      <button class="btn btn-ghost" type="button" id="logoutBtn">Log out</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <div class="stage">
+      <div class="frame-wrap" id="frameWrap">
+        <iframe id="preview" title="Live preview of the site"></iframe>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tabBtn-text" aria-controls="tab-text" aria-selected="true" data-tab="text">Text</button>
+        <button type="button" role="tab" id="tabBtn-colors" aria-controls="tab-colors" aria-selected="false" data-tab="colors">Colours</button>
+        <button type="button" role="tab" id="tabBtn-resume" aria-controls="tab-resume" aria-selected="false" data-tab="resume">Resume</button>
+      </div>
+
+      <!-- text -->
+      <section class="tab-panel" id="tab-text" role="tabpanel" aria-labelledby="tabBtn-text">
+        <div class="hint">
+          <p><strong>Click any text in the preview</strong> to edit it in place.</p>
+          <ul class="keys">
+            <li><kbd>Enter</kbd> new line</li>
+            <li><kbd>Ctrl</kbd>+<kbd>B</kbd> bold</li>
+            <li><kbd>Ctrl</kbd>+<kbd>I</kbd> italic</li>
+            <li><kbd>Esc</kbd> undo this edit</li>
+            <li><kbd>Ctrl</kbd>+<kbd>S</kbd> save</li>
+          </ul>
+        </div>
+
+        <div class="card selected" id="selected" hidden>
+          <div class="card-head">
+            <span class="eyebrow">Selected</span>
+            <span class="pill" id="selWhere"></span>
+          </div>
+          <p class="sel-label">Original text</p>
+          <p class="sel-original" id="selOriginal"></p>
+          <button class="btn btn-ghost btn-sm" type="button" id="selRestore">Restore original</button>
+        </div>
+
+        <div class="list-head">
+          <h2>Changed text <span class="count" id="changeCount">0</span></h2>
+          <button class="link-btn" type="button" id="restoreAllText" hidden>Restore all</button>
+        </div>
+        <ul class="change-list" id="changeList"></ul>
+        <p class="empty" id="changeEmpty">Nothing changed yet. Edits show here so you can jump back to them.</p>
+      </section>
+
+      <!-- colours -->
+      <section class="tab-panel" id="tab-colors" role="tabpanel" aria-labelledby="tabBtn-colors" hidden>
+        <div class="row-between">
+          <span class="eyebrow">Editing palette</span>
+          <div class="seg seg-sm" role="group" aria-label="Theme to edit" id="themeSeg">
+            <button type="button" data-theme="dark" aria-pressed="true">Dark</button>
+            <button type="button" data-theme="light" aria-pressed="false">Light</button>
+          </div>
+        </div>
+
+        <label class="field field-inline">
+          <span>Visitors see by default</span>
+          <select id="defaultTheme">
+            <option value="dark">Dark theme</option>
+            <option value="light">Light theme</option>
+            <option value="system">Match their device</option>
+          </select>
+        </label>
+        <p class="small">Visitors can still switch with the sun/moon button; their choice is remembered.</p>
+
+        <div id="colorList"></div>
+
+        <button class="link-btn" type="button" id="restoreColors">Restore default colours for this theme</button>
+      </section>
+
+      <!-- resume -->
+      <section class="tab-panel" id="tab-resume" role="tabpanel" aria-labelledby="tabBtn-resume" hidden>
+        <p class="small resume-intro">The <strong>Download Resume</strong> button gives visitors this file. Uploads go live straight away; they don't need the Save button.</p>
+
+        <div class="card resume-current">
+          <span class="eyebrow">Current file</span>
+          <p class="resume-name" id="resumeName">Checking…</p>
+          <p class="small" id="resumeMeta"></p>
+          <div class="resume-actions">
+            <a class="btn btn-ghost btn-sm" id="resumeOpen" href="/api/resume" target="_blank" rel="noopener">Download current</a>
+            <button class="link-btn danger" type="button" id="resumeRemove" hidden>Remove upload</button>
+          </div>
+        </div>
+
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="resumeFile" accept="application/pdf,.pdf" />
+          <span class="dz-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg>
+          </span>
+          <span class="dz-title" id="dzTitle">Upload a new PDF</span>
+          <span class="small">Click or drop a file here. PDF only, up to 3 MB.</span>
+        </label>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>

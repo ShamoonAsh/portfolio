@@ -1,7 +1,9 @@
 # Syed Shamoon Ashraf — Portfolio
 
-Static site (`index.html` + `styles.css` + `script.js`) with one serverless
-function, `api/contact.js`, that relays the contact form through Resend.
+Static site (`index.html` + `styles.css` + `script.js`) with a few serverless
+functions in `api/`: the contact form (`contact.js`, via Resend), and the
+`/admin` editor's content, login and resume endpoints (backed by Upstash Redis).
+Dark and light themes, switchable from the nav.
 
 ## Deploying to Vercel
 
@@ -46,8 +48,57 @@ does not update existing deployments; you must redeploy.**
 files *and* `/api/contact`. Opening `index.html` directly works for everything
 except the form, which needs the function running.
 
+## Admin editor (`/admin`)
+
+`/admin` is a login-protected editor for the live site:
+
+- **Text**: click any text in the preview and type. Every editable element
+  has a `data-k="<section>.<n>"` attribute in `index.html`; only edited keys
+  are stored. Allowed formatting: line breaks, bold, italic.
+- **Colours**: separate Dark and Light palettes (the tokens at the top of
+  `styles.css`), plus which theme visitors get by default.
+- **Resume**: upload a PDF; the **Download Resume** button (`/api/resume`)
+  serves it. With no upload, it serves `SYED_SHAMOON_ASHRAF_RESUME.pdf` from
+  the repo.
+
+Edits (and the uploaded resume) are stored in Upstash Redis and applied by
+`script.js` on page load. If Redis is unreachable the page shows what
+`index.html` says, so nothing breaks. Saved changes reach visitors within
+about a minute (edge cache).
+
+**Keys are permanent.** Edits are stored against `data-k` keys. When you add
+new text to `index.html`, give it a new unused key (e.g. `projects.80`); don't
+renumber existing ones, or saved edits land on the wrong element.
+
+### Setup
+
+1. **Redis**: Vercel → project → **Storage** → **Create Database** →
+   **Upstash** → **Redis** (free plan). Connect it to this project for all
+   environments. That adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+   (`UPSTASH_REDIS_REST_URL` / `_TOKEN` also work). No tables to create.
+2. **Login**: add these in Vercel → Settings → Environment Variables:
+
+| Name | Notes |
+| --- | --- |
+| `ADMIN_USERNAME` | The admin login name. |
+| `ADMIN_PASSWORD` | The admin password. Mark it **Sensitive**. |
+| `ADMIN_SESSION_SECRET` | 32+ random characters; signs the login cookie. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+
+3. **Redeploy**, then open `/admin`. If anything is missing, the login screen
+   lists it.
+
+### Security notes
+
+- Credentials exist only as Vercel env vars, never in this repo.
+- Sessions are HMAC-signed, `HttpOnly; Secure; SameSite=Strict` cookies, 8 hours.
+  Changing the password or secret logs every session out.
+- 5 failed logins from one IP lock it out for 15 minutes.
+- The Redis token is only used server-side, in `api/`. Saved text is sanitised
+  on the server and again in the browser (no tags beyond `br/strong/em/b/i`,
+  no attributes).
+
 ## The CV download
 
-The **Download Resume** button links to `/SYED_SHAMOON_ASHRAF_RESUME.pdf`, which
-lives in the project root. Renaming the file without updating the `href` in
-`index.html` will make the button 404.
+The **Download Resume** button links to `/api/resume`, which sends the PDF
+uploaded in `/admin`, or redirects to `/SYED_SHAMOON_ASHRAF_RESUME.pdf` in the
+project root when nothing is uploaded. Keep that file name if you replace the repo copy.

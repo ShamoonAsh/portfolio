@@ -6,6 +6,167 @@
 // elements before they animate in. If JS ever fails, nothing disappears.
 document.documentElement.classList.add("js");
 
+/* ============================================================
+   Theme toggle + content edits saved from /admin
+   ============================================================ */
+
+const root = document.documentElement;
+const CMS_EDIT_MODE = /[?&]cms=edit\b/.test(location.search);
+
+// --- theme ----------------------------------------------------------------
+// The head script already restored a saved choice before first paint. With
+// no saved choice, the default set in /admin applies once content loads.
+const themeToggle = document.getElementById("themeToggle");
+
+function currentTheme() {
+  return root.getAttribute("data-theme") === "light" ? "light" : "dark";
+}
+
+function setTheme(theme, opts) {
+  const animate = opts && opts.animate;
+  if (animate) {
+    root.classList.add("theme-anim");
+    setTimeout(() => root.classList.remove("theme-anim"), 420);
+  }
+  root.setAttribute("data-theme", theme === "light" ? "light" : "dark");
+  if (themeToggle) {
+    const label = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
+    themeToggle.setAttribute("aria-label", label);
+    themeToggle.title = label;
+  }
+}
+setTheme(currentTheme());
+
+if (themeToggle) {
+  themeToggle.addEventListener("click", () => {
+    const next = currentTheme() === "light" ? "dark" : "light";
+    setTheme(next, { animate: true });
+    root.setAttribute("data-theme-source", "user");
+    // the admin preview must never overwrite the visitor's own preference
+    if (!CMS_EDIT_MODE) {
+      try { localStorage.setItem("theme", next); } catch (e) {}
+    }
+  });
+}
+
+// --- content ----------------------------------------------------------------
+// Every editable element carries data-k="<section>.<n>". Saved text is limited
+// to plain text plus <br>, <strong>, <em>, <b> and <i>. The API sanitises it
+// already, and it is cleaned again here before it touches the page.
+const CMS_INLINE = { br: 1, strong: 1, em: 1, b: 1, i: 1 };
+const CMS_DROP = { script: 1, style: 1, template: 1, svg: 1, iframe: 1, object: 1 };
+
+function cmsClean(html) {
+  const tpl = document.createElement("template"); // inert: nothing in it runs or loads
+  tpl.innerHTML = String(html == null ? "" : html);
+  const out = document.createElement("div");
+  (function walk(src, dst) {
+    src.childNodes.forEach((n) => {
+      if (n.nodeType === 3) {
+        dst.appendChild(document.createTextNode(n.nodeValue));
+      } else if (n.nodeType === 1) {
+        const tag = n.nodeName.toLowerCase();
+        if (CMS_DROP[tag]) return;
+        if (CMS_INLINE[tag]) {
+          const el = document.createElement(tag);
+          dst.appendChild(el);
+          if (tag !== "br") walk(n, el);
+        } else if (tag === "div" || tag === "p") {
+          // contenteditable wraps new lines in blocks; keep them as line breaks
+          if (dst.childNodes.length) dst.appendChild(document.createElement("br"));
+          walk(n, dst);
+        } else {
+          walk(n, dst); // unknown wrapper: keep its text, drop the element
+        }
+      }
+    });
+  })(tpl.content, out);
+  return out.innerHTML.replace(/(<br>\s*)+$/, "").replace(/^\s*(<br>\s*)+/, "");
+}
+
+// Elements can carry decorations added by this script (tech logos inside
+// tags). They are marked data-cms-decor and are never part of the text.
+function cmsGet(el) {
+  const copy = el.cloneNode(true);
+  copy.querySelectorAll("[data-cms-decor]").forEach((d) => d.remove());
+  return cmsClean(copy.innerHTML.trim());
+}
+
+function cmsSet(el, html) {
+  el.innerHTML = cmsClean(html);
+  cmsDecorate(el);
+}
+
+function cmsDecorate(el) {
+  if (el.matches(".tags span") && typeof decorateTag === "function") decorateTag(el);
+}
+
+const COLOR_STYLE_ID = "cms-colors";
+function cmsApplyColors(colors) {
+  let style = document.getElementById(COLOR_STYLE_ID);
+  if (!style) {
+    style = document.createElement("style");
+    style.id = COLOR_STYLE_ID;
+    document.head.appendChild(style);
+  }
+  const block = (sel, map) => {
+    const rules = Object.keys(map || {})
+      .filter((k) => /^--[a-z0-9-]+$/.test(k) && /^#[0-9a-f]{6}$/i.test(map[k]))
+      .map((k) => k + ": " + map[k] + ";");
+    return rules.length ? sel + " { " + rules.join(" ") + " }\n" : "";
+  };
+  const c = colors || {};
+  // same specificity as the stylesheet's own blocks, and later, so these win
+  style.textContent = block(":root", c.dark) + block(':root[data-theme="light"]', c.light);
+}
+
+function cmsApplyText(text) {
+  const map = text || {};
+  document.querySelectorAll("[data-k]").forEach((el) => {
+    const k = el.getAttribute("data-k");
+    if (Object.prototype.hasOwnProperty.call(map, k)) cmsSet(el, map[k]);
+  });
+}
+
+function cmsApplyDefaultTheme(def) {
+  if (root.getAttribute("data-theme-source") === "user") return;
+  let theme = def;
+  if (def === "system") {
+    theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+  if (theme === "light" || theme === "dark") setTheme(theme);
+}
+
+function cmsApply(data) {
+  if (!data || typeof data !== "object") return;
+  cmsApplyColors(data.colors);
+  cmsApplyText(data.text);
+  cmsApplyDefaultTheme(data.defaultTheme);
+}
+
+// the admin preview drives the page through this
+window.__cms = {
+  editMode: CMS_EDIT_MODE,
+  clean: cmsClean,
+  get: cmsGet,
+  set: cmsSet,
+  applyColors: cmsApplyColors,
+  setTheme: (t) => setTheme(t),
+  currentTheme,
+};
+
+if (!CMS_EDIT_MODE && window.__cmsContent) {
+  window.__cmsContent
+    .then((data) => {
+      try {
+        cmsApply(data);
+      } catch (e) {
+        console.error("Could not apply saved content", e);
+      }
+    })
+    .finally(() => root.classList.remove("cms-pending"));
+}
+
 // --- sticky nav background on scroll ---
 const nav = document.getElementById("nav");
 const onScroll = () => nav.classList.toggle("scrolled", window.scrollY > 24);
@@ -84,7 +245,6 @@ if (contactForm) {
   const statusEl = document.getElementById("cfStatus");
   const submitBtn = document.getElementById("cfSubmit");
   const submitLabel = submitBtn.querySelector(".cf-label");
-  const idleLabel = submitLabel.textContent;
 
   const setStatus = (message, kind) => {
     statusEl.textContent = message;
@@ -102,6 +262,8 @@ if (contactForm) {
       payload[key] = typeof value === "string" ? value.trim() : value;
     });
 
+    // read at submit time, not page load: the label may be edited from /admin
+    const idleLabel = submitLabel.textContent;
     submitBtn.disabled = true;
     submitLabel.textContent = "Sending…";
     setStatus("");
@@ -302,15 +464,20 @@ const TECH_ICONS = {
 const MONO_ICONS = { stripe: 1, whatsapp: 1, ngrok: 1, gmail: 1, gemini: 1, google: 1 };
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-document.querySelectorAll(".tags span").forEach((el) => {
+// A function so it can run again after a tag's text is edited from /admin:
+// the logo follows the label. Marked data-cms-decor so it's never saved as text.
+function decorateTag(el) {
+  el.querySelectorAll("[data-cms-decor]").forEach((d) => d.remove());
   const id = TECH_ICONS[el.textContent.trim()];
   if (!id) return;
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("class", "tech-ico" + (MONO_ICONS[id] ? " ico-" + id : ""));
   svg.setAttribute("aria-hidden", "true");
   svg.setAttribute("focusable", "false");
+  svg.setAttribute("data-cms-decor", "");
   const use = document.createElementNS(SVG_NS, "use");
   use.setAttribute("href", "#i-" + id);
   svg.appendChild(use);
   el.insertBefore(svg, el.firstChild);
-});
+}
+document.querySelectorAll(".tags span").forEach(decorateTag);
