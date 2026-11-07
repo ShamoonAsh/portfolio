@@ -212,11 +212,18 @@ main, .footer { position: relative; z-index: 1; }
   /* must sit above <main>, which is later in the DOM at the same stacking level */
   z-index: 100;
   padding: 18px 0;
-  transition: padding 0.4s var(--ease), background 0.4s, border-color 0.4s;
+  margin-bottom: 0;
+  /* padding and margin MUST share duration + easing: see .nav.scrolled */
+  transition: padding 0.4s var(--ease), margin-bottom 0.4s var(--ease), background 0.4s, border-color 0.4s;
   border-bottom: 1px solid transparent;
 }
+/* The bar shrinks by 16px when scrolled, and gives the same 16px back as
+   margin, so the page below never moves. If it did, the browser's scroll
+   anchoring would shift the scroll position back across the threshold and
+   the nav would flip between states in a loop (the flicker). */
 .nav.scrolled {
   padding: 10px 0;
+  margin-bottom: 16px;
   background: var(--nav-bg);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);

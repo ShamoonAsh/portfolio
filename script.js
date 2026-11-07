@@ -393,8 +393,19 @@ if (!CMS_EDIT_MODE && window.__cmsContent) {
 }
 
 // --- sticky nav background on scroll ---
+// Two thresholds (on past 32px, off below 8px), so a scroll position sitting
+// near the switch point, or a few pixels of jitter from momentum scrolling,
+// can't flip the nav back and forth. (The CSS also keeps the page from moving
+// when the nav shrinks; see .nav.scrolled.)
 const nav = document.getElementById("nav");
-const onScroll = () => nav.classList.toggle("scrolled", window.scrollY > 24);
+const NAV_ON = 32;
+const NAV_OFF = 8;
+const onScroll = () => {
+  const y = window.scrollY;
+  const scrolled = nav.classList.contains("scrolled");
+  if (!scrolled && y > NAV_ON) nav.classList.add("scrolled");
+  else if (scrolled && y < NAV_OFF) nav.classList.remove("scrolled");
+};
 onScroll();
 window.addEventListener("scroll", onScroll, { passive: true });
 
