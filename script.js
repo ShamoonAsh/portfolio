@@ -253,10 +253,14 @@ function cmsBuildItem(id, clones) {
     });
   }
   el.setAttribute("data-item", id);
-  // new elements missed the load-time passes (scroll reveal, tech logos)
-  [el].concat(Array.prototype.slice.call(el.querySelectorAll(".reveal"))).forEach((n) => {
-    if (n.classList.contains("reveal")) n.classList.add("in");
-  });
+  // Animations, stagger delays, spotlight etc. are applied by enhancePage()
+  // after the layout is built, exactly as for the original items. The editor
+  // preview shows everything straight away instead of waiting for scroll.
+  if (CMS_EDIT_MODE) {
+    [el].concat(Array.prototype.slice.call(el.querySelectorAll(".reveal"))).forEach((n) => {
+      if (n.classList.contains("reveal")) n.classList.add("in");
+    });
+  }
   if (typeof decorateTag === "function") {
     if (el.matches(".tags span")) decorateTag(el);
     el.querySelectorAll(".tags span").forEach(decorateTag);
@@ -303,6 +307,7 @@ function cmsApplyLayout(layout, opts) {
     if (!processed) break;
   }
   cmsFixProjectGrid();
+  enhancePage(); // new/moved items get the same animations as their siblings
 }
 
 // Projects sit two-up between full-width featured cards. When a run has an
@@ -346,6 +351,7 @@ function cmsApply(data) {
   cmsApplyDefaultTheme(data.defaultTheme);
   cmsPaletteLoaded = true;
   updateBrandChrome(); // after the logo letter and theme are final
+  enhancePage(); // links may have changed (menu highlight follows hrefs)
 }
 
 // the admin preview drives the page through this
@@ -379,7 +385,11 @@ if (!CMS_EDIT_MODE && window.__cmsContent) {
       // without overwriting the remembered one
       if (!cmsPaletteLoaded) updateBrandChrome();
     })
-    .finally(() => root.classList.remove("cms-pending"));
+    .finally(() => {
+      root.classList.remove("cms-pending");
+      // reveals were held while the page was hidden; play them now
+      if (typeof queueSweep === "function") queueSweep();
+    });
 }
 
 // --- sticky nav background on scroll ---
@@ -409,12 +419,19 @@ links.addEventListener("click", (e) => {
 // an IntersectionObserver for smoothness, plus a scroll/resize sweep that
 // catches anything the observer misses (fast scrolling, anchor jumps,
 // orientation changes, browsers that throttle observers).
-const revealables = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+//
+// While the page is held hidden for saved edits (html.cms-pending), nothing
+// is revealed: otherwise items near the top would finish animating unseen.
+// Items added later (duplicates from /admin) are registered by enhancePage().
+let revealables = [];
+const revealSeen = typeof WeakSet === "function" ? new WeakSet() : null;
+const revealHeld = () => root.classList.contains("cms-pending");
 
 let io = null;
 if ("IntersectionObserver" in window) {
   io = new IntersectionObserver(
     (entries) => {
+      if (revealHeld()) return; // the sweep catches these once the page shows
       entries.forEach((entry) => {
         if (!entry.isIntersecting) return;
         entry.target.classList.add("in");
@@ -423,12 +440,24 @@ if ("IntersectionObserver" in window) {
     },
     { threshold: 0, rootMargin: "0px 0px -8% 0px" }
   );
-  revealables.forEach((el) => io.observe(el));
 }
+
+function registerReveals() {
+  revealables = revealables.filter((el) => el.isConnected);
+  document.querySelectorAll(".reveal").forEach((el) => {
+    if (revealSeen && revealSeen.has(el)) return;
+    if (revealSeen) revealSeen.add(el);
+    revealables.push(el);
+    if (CMS_EDIT_MODE) el.classList.add("in");
+    else if (io && !el.classList.contains("in")) io.observe(el);
+  });
+}
+registerReveals();
 
 let ticking = false;
 function sweep() {
   ticking = false;
+  if (revealHeld()) return;
   const vh = window.innerHeight || document.documentElement.clientHeight;
   revealables.forEach((el) => {
     if (el.classList.contains("in")) return;
@@ -450,6 +479,9 @@ window.addEventListener("resize", queueSweep);
 window.addEventListener("orientationchange", queueSweep);
 window.addEventListener("load", sweep);
 sweep();
+// safety net: the head script lifts cms-pending after 1.5s even if the
+// content request hangs; make sure the reveals still play then
+setTimeout(queueSweep, 1600);
 
 // --- contact form ------------------------------------------------------
 // Posts JSON to /api/contact, which relays it through Resend. The form has
@@ -520,6 +552,9 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 // Cards in a grid each get a little more delay than the one before, so a row
 // cascades instead of snapping in all at once. Capped, or the last card in a
 // long list would visibly lag behind the scroll.
+// Everything here is computed from each item's position in its list, and is
+// re-run by enhancePage() whenever /admin's layout adds, removes or reorders
+// items, so a new item always gets the same treatment as its siblings.
 function stagger(containerSel, itemSel, step, cap) {
   document.querySelectorAll(containerSel).forEach((box) => {
     box.querySelectorAll(itemSel).forEach((el, i) => {
@@ -527,9 +562,6 @@ function stagger(containerSel, itemSel, step, cap) {
     });
   });
 }
-stagger(".projects", ".project", 90, 6);
-stagger(".certs", ".cert", 80, 6);
-stagger(".timeline", ".tl-item", 70, 6);
 
 // Items that aren't themselves .reveal fade in once their container arrives.
 function staggerInside(sel, step, cap, base) {
@@ -538,19 +570,42 @@ function staggerInside(sel, step, cap, base) {
     el.style.setProperty("--d", (base || 0) + Math.min(i, cap) * step + "ms");
   });
 }
-staggerInside(".strip-set .chip", 45, 10, 60);
-document.querySelectorAll(".skills-grid .skill-col").forEach((col) => {
-  col.querySelectorAll("li").forEach((li, i) => {
-    li.classList.add("stagger-item");
-    li.style.setProperty("--d", 120 + i * 55 + "ms");
+
+function applyStagger() {
+  stagger(".projects", ".project", 90, 6);
+  stagger(".certs", ".cert", 80, 6);
+  stagger(".timeline", ".tl-item", 70, 6);
+  staggerInside(".strip-set .chip", 45, 10, 60);
+  document.querySelectorAll(".skills-grid .skill-col").forEach((col) => {
+    col.querySelectorAll("li").forEach((li, i) => {
+      li.classList.add("stagger-item");
+      li.style.setProperty("--d", 120 + i * 55 + "ms");
+    });
   });
-});
+  // hero services rise in one after another: 0.54s, 0.62s, 0.70s ... for
+  // however many there are (the CSS only lists the first four)
+  document.querySelectorAll(".hero-services").forEach((ul) => {
+    Array.prototype.forEach.call(ul.children, (li, i) => {
+      li.style.animationDelay = (0.54 + i * 0.08).toFixed(2) + "s";
+    });
+  });
+}
+applyStagger();
 
 // --- scroll progress, section highlight, back-to-top --------------------
 const scrollBar = document.getElementById("scrollBar");
 const toTop = document.getElementById("toTop");
-const navLinkEls = Array.prototype.slice.call(document.querySelectorAll(".nav-links a"));
-const navTargets = navLinkEls.map((a) => document.querySelector(a.getAttribute("href")));
+let navLinkEls = [];
+let navTargets = [];
+function refreshNav() {
+  navLinkEls = Array.prototype.slice.call(document.querySelectorAll(".nav-links a"));
+  navTargets = navLinkEls.map((a) => {
+    const href = a.getAttribute("href") || "";
+    if (!/^#[A-Za-z][\w-]*$/.test(href)) return null;
+    return document.getElementById(href.slice(1));
+  });
+}
+refreshNav();
 
 function onScrollExtras() {
   const doc = document.documentElement;
@@ -591,8 +646,14 @@ if (toTop) {
 // --- pointer-tracked light ----------------------------------------------
 // Only on devices with a real pointer: on touch this would fire on every tap
 // and leave a highlight stuck wherever the finger last was.
-if (!reduceMotion.matches && window.matchMedia("(pointer: fine)").matches) {
+const canTrack = !reduceMotion.matches && window.matchMedia("(pointer: fine)").matches;
+const tracked = typeof WeakSet === "function" ? new WeakSet() : null;
+
+function trackAll() {
+  if (!canTrack || !tracked) return;
   const track = (el, xProp, yProp) => {
+    if (tracked.has(el)) return;
+    tracked.add(el);
     let queued = false;
     let px = 0;
     let py = 0;
@@ -621,6 +682,21 @@ if (!reduceMotion.matches && window.matchMedia("(pointer: fine)").matches) {
 
   document.querySelectorAll(".project, .cert").forEach((card) => track(card, "--mx", "--my"));
   document.querySelectorAll(".hero-card, .contact-card").forEach((card) => track(card, "--hx", "--hy"));
+}
+trackAll();
+
+// --- re-apply per-item behaviour after a layout change -------------------
+// Called by cmsApplyLayout()/cmsApply() once added, removed or reordered
+// items are in place. Every step is safe to repeat.
+var pageReady = false; // var: hoisted, so an early call reads "false" instead of throwing
+function enhancePage() {
+  if (!pageReady) return; // the initial passes above already ran
+  registerReveals();
+  applyStagger();
+  refreshNav();
+  trackAll();
+  queueSweep();
+  queueExtras();
 }
 
 /* ============================================================
@@ -696,3 +772,6 @@ function decorateTag(el) {
   el.insertBefore(svg, el.firstChild);
 }
 document.querySelectorAll(".tags span").forEach(decorateTag);
+
+// every load-time pass above has run; later layout changes re-apply them
+pageReady = true;
