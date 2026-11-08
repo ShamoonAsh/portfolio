@@ -614,6 +614,10 @@ main, .footer { position: relative; z-index: 1; }
   transition: background 0.4s;
 }
 .tl-item:last-child { border-bottom: 1px solid var(--line); }
+/* the section heading already draws the line above the first entry */
+.section-head + .timeline { margin-top: -30px; }
+.timeline > .tl-item:first-child { border-top-color: transparent; }
+.timeline > .tl-item:first-child::after { display: none; }
 .tl-item:hover { background: var(--tint); }
 
 .tl-when {
