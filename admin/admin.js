@@ -1891,6 +1891,10 @@
         renderPreview();
         renderAllPanels();
       }
+      // this browser opens the site with the new look at once, and asking for
+      // the public copy makes Vercel's edge refresh it for visitors
+      rememberSiteContent(res.data);
+      fetch("/api/content", { headers: { Accept: "application/json" } }).catch(() => {});
       toast("Saved. Visitors will see it within about a minute.");
       // the link-preview banner follows the saved colours and hero text
       publishShareBanner({ quiet: true });
@@ -1937,11 +1941,21 @@
   // ------------------------------------------------------------------
   // Before login: dress the login screen in the site's saved look. Public,
   // edge-cached data; on failure the screen keeps the default blue.
+  // Same copy the site keeps between visits (see the <head> scripts in
+  // index.html and admin/index.html), so neither starts in the default blue.
+  function rememberSiteContent(data) {
+    if (!data || typeof data !== "object") return;
+    try {
+      localStorage.setItem("cms-content", JSON.stringify(data));
+    } catch (e) {}
+  }
+
   async function themeLoginScreen() {
     try {
       const res = await fetch("/api/content", { headers: { Accept: "application/json" } });
       if (!res.ok) return;
       const data = await res.json();
+      rememberSiteContent(data);
       if (state.editorOpen || !data || !data.colors) return;
       const mode =
         data.defaultTheme === "light" || data.defaultTheme === "dark"

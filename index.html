@@ -31,15 +31,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <script>
 /* Runs before first paint. 1) Restores the visitor's own theme choice so the
-   page never flashes the wrong theme. 2) Starts fetching the text/colour
-   edits saved in /admin while the CSS and fonts load; script.js applies them.
+   page never flashes the wrong theme. 2) Puts back the colours and default
+   theme saved in /admin as they were on the last visit, so a slow request
+   never shows the stylesheet's original palette. 3) Starts fetching the
+   latest edits while the CSS and fonts load; script.js applies them.
    The page stays hidden until they arrive, capped at 1.5s so a slow or
-   unreachable API only ever costs a short delay, never a blank page. */
+   unreachable API only ever costs a short delay, never a blank page
+   (returning visitors get the copy from their last visit at that point). */
 (function () {
   var d = document.documentElement;
+  var cached = null;
   try {
     var t = localStorage.getItem("theme");
     if (t === "light" || t === "dark") { d.setAttribute("data-theme", t); d.setAttribute("data-theme-source", "user"); }
+    cached = JSON.parse(localStorage.getItem("cms-content") || "null");
+    // (the /admin preview gets its colours from the editor instead)
+    if (!cached || typeof cached !== "object" || /[?&]cms=edit\b/.test(location.search)) cached = null;
+    if (cached) {
+      window.__cmsCached = cached; // its colours go in right after styles.css (below)
+      var def = cached.defaultTheme;
+      if (def === "system") def = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      if (!d.hasAttribute("data-theme") && (def === "light" || def === "dark")) d.setAttribute("data-theme", def);
+    }
     // last favicon/bar colour built from the saved palette, so the tab
     // doesn't flash the default blue before the palette loads
     var mode = d.getAttribute("data-theme") === "light" ? "light" : "dark";
@@ -51,13 +64,40 @@
   if (/[?&]cms=edit\b/.test(location.search)) { d.classList.add("cms-edit"); return; }
   if (!window.fetch) return;
   d.classList.add("cms-pending");
-  window.__cmsContent = fetch("/api/content", { headers: { Accept: "application/json" } })
+  var fresh = fetch("/api/content", { headers: { Accept: "application/json" } })
     .then(function (r) { return r.ok ? r.json() : null; })
     .catch(function () { return null; });
+  window.__cmsFresh = fresh;
+  // slow or failed request: show last visit's copy, script.js swaps in the
+  // fresh one if it differs once it arrives
+  window.__cmsContent = cached
+    ? Promise.race([
+        fresh.then(function (x) { return x || cached; }),
+        new Promise(function (r) { setTimeout(function () { r(cached); }, 1400); }),
+      ])
+    : fresh;
   setTimeout(function () { d.classList.remove("cms-pending"); }, 1500);
 })();
 </script>
 <link rel="stylesheet" href="styles.css" />
+<script>
+/* saved colours from the last visit, placed after styles.css so they win */
+(function () {
+  var c = window.__cmsCached && window.__cmsCached.colors;
+  if (!c || typeof c !== "object") return;
+  var block = function (sel, map) {
+    var out = [];
+    for (var k in map || {}) {
+      if (/^--[a-z0-9-]+$/.test(k) && /^#[0-9a-f]{6}$/i.test(map[k])) out.push(k + ": " + map[k] + ";");
+    }
+    return out.length ? sel + " { " + out.join(" ") + " }\n" : "";
+  };
+  var st = document.createElement("style");
+  st.id = "cms-colors";
+  st.textContent = block(":root", c.dark) + block(':root[data-theme="light"]', c.light);
+  document.head.appendChild(st);
+})();
+</script>
 </head>
 <body>
 

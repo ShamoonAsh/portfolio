@@ -11,6 +11,35 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
 <!-- absolute paths: this page is served at /admin (no trailing slash) -->
 <link rel="stylesheet" href="/admin/admin.css" />
+<script>
+/* Before first paint: take the site's mode, accent and tab icon from the copy
+   this browser kept from the last visit, so the editor never flashes the
+   original blue while /api/content loads (admin.js does the same with the
+   fresh copy). */
+(function () {
+  try {
+    var d = document.documentElement;
+    var data = JSON.parse(localStorage.getItem("cms-content") || "null");
+    if (!data || typeof data !== "object") return;
+    var def = data.defaultTheme;
+    var mode = def === "light" || def === "dark" ? def
+      : window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    if (def !== "system") d.setAttribute("data-theme", mode);
+    var pal = (data.colors && data.colors[mode]) || {};
+    var ok = function (v) { return typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v : null; };
+    var accent = ok(pal["--accent"]);
+    if (accent) {
+      d.style.setProperty("--accent", accent);
+      if (ok(pal["--on-accent"])) d.style.setProperty("--accent-ink", pal["--on-accent"]);
+      d.style.setProperty("--accent-soft", "color-mix(in srgb, " + accent + " 13%, transparent)");
+    }
+    var g1 = ok(pal["--grad-1"]), g3 = ok(pal["--grad-3"]), g4 = ok(pal["--grad-4"]);
+    if (g1 && g3 && g4) d.style.setProperty("--mark-grad", "linear-gradient(155deg, " + g1 + ", " + g3 + " 62%, " + g4 + ")");
+    var icon = localStorage.getItem("cms-favicon-" + mode);
+    if (icon && icon.indexOf("data:image/svg+xml,") === 0) document.querySelector("link[rel~='icon']").href = icon;
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 

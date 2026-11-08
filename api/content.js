@@ -2,9 +2,11 @@
    GET /api/content: the text/colour edits saved from /admin, read
    by every visitor's page load (see the <head> script in index.html).
 
-   Cached briefly at Vercel's edge so a traffic spike doesn't turn
-   into a database spike (Upstash's free tier counts commands); a save shows up for visitors within about
-   a minute. Any failure answers 503 (never cached) and the page
+   Vercel's edge keeps a copy and always answers from it straight away,
+   refreshing it in the background (stale-while-revalidate), so a visit
+   never waits on a sleeping function or the database. Right after a save
+   the first request may still get the previous copy (the admin page makes
+   that request itself, so visitors get the new one). Any failure answers 503 (never cached) and the page
    simply keeps the text and colours written in index.html.
    ============================================================ */
 
@@ -30,7 +32,7 @@ module.exports = async (req, res) => {
 
   try {
     const { data } = await readContent();
-    res.setHeader("Vercel-CDN-Cache-Control", "max-age=10, stale-while-revalidate=50");
+    res.setHeader("Vercel-CDN-Cache-Control", "max-age=5, stale-while-revalidate=604800");
     return res.status(200).json(data);
   } catch (err) {
     console.error("GET /api/content failed:", err.code || "", err.message);

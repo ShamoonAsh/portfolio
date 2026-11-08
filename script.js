@@ -373,9 +373,32 @@ window.__cms = {
 };
 
 if (!CMS_EDIT_MODE && window.__cmsContent) {
+  // Remember the latest copy so the next visit starts with these colours and
+  // text straight away. If the page had to start from last visit's copy
+  // (slow request), switch to the fresh one when it lands, if it differs.
+  let cmsShown = null;
+  if (window.__cmsFresh) {
+    window.__cmsFresh.then((fresh) => {
+      if (!fresh || typeof fresh !== "object") return;
+      const json = JSON.stringify(fresh);
+      try {
+        localStorage.setItem("cms-content", json);
+      } catch (e) {}
+      window.__cmsContent.then(() => {
+        if (cmsShown === null || cmsShown === json) return;
+        cmsShown = json;
+        try {
+          cmsApply(fresh);
+        } catch (e) {
+          console.error("Could not apply saved content", e);
+        }
+      });
+    });
+  }
   window.__cmsContent
     .then((data) => {
       cmsSettled = true;
+      cmsShown = data ? JSON.stringify(data) : "";
       try {
         cmsApply(data);
       } catch (e) {
